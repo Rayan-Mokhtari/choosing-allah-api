@@ -1,20 +1,29 @@
-FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
+FROM python:3.11-slim-bookworm
+
+# Install Node.js 20 + system libraries needed by Chromium
+RUN apt-get update && apt-get install -y curl gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    libnss3 libnspr4 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+    libxfixes3 libxrandr2 libgbm1 libasound2 libxshmfence1 \
+    fonts-liberation fontconfig \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy Georgia fonts so Chromium can render them
 COPY fonts/ /usr/share/fonts/truetype/msttcorefonts/
 RUN fc-cache -fv
 
-# Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Node dependencies (playwright already installed in base image)
 COPY package.json .
 RUN npm install
+RUN npx playwright install chromium
+RUN npx playwright install-deps chromium
 
-# Copy everything
 COPY . .
 
 EXPOSE 8000
