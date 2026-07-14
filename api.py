@@ -1,14 +1,4 @@
-"""Choosing Allah — PDF Build API
-Deploy to Railway / Render, then call from Lovable.
-
-Endpoints:
-  GET  /chapters              — list all chapters + content
-  GET  /chapter/{file}        — get one chapter
-  PUT  /chapter/{file}        — update one chapter  { content: str }
-  POST /build                 — rebuild PDF, returns interior.pdf
-  GET  /pdf                   — download current interior.pdf
-  GET  /health                — liveness check
-"""
+"""Choosing Allah — PDF Build API"""
 import os, subprocess, threading
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
@@ -28,12 +18,11 @@ BASE = Path(__file__).parent
 SRC  = BASE / "src16"
 PDF  = BASE / "interior.pdf"
 
-# One build at a time
 _build_lock = threading.Lock()
 
 CHAPTER_NAMES = {
-    "f_00_preface_clean.md": "Before we begin",
-    "f_00_front_matter.md":  "Front matter",
+    "f_00_front_matter.md":  "Dedication, Epigraph & Copyright",
+    "f_00_preface_clean.md": "Before we begin (Preface)",
     "f_00_intro.md":         "Introduction",
     "f_01.md": "1 · So, who is Allah?",
     "f_02.md": "2 · Why should you believe in Allah?",
@@ -52,8 +41,11 @@ CHAPTER_NAMES = {
     "f_15.md": "15 · How to properly seek knowledge",
     "f_16.md": "16 · How to believe what you already know",
     "f_17_final_word.md":    "Your turn",
-    "f_18_references.md":   "References",
-    "glossary.md":           "Glossary",
+    "f_19_refs_page.md":     "References page — printed text",
+    "f_20_gloss_page.md":    "Glossary page — printed text",
+    "manifest.json":         "Contents — chapter titles & order",
+    "f_18_references.md":    "References (online list — not printed)",
+    "glossary.md":           "Glossary (term definitions — not printed)",
 }
 
 ORDER = list(CHAPTER_NAMES.keys())
@@ -74,7 +66,11 @@ def list_chapters():
     for fname in ORDER:
         path = SRC / fname
         if path.exists():
-            out.append({"file": fname, "name": CHAPTER_NAMES.get(fname, fname), "content": path.read_text()})
+            out.append({
+                "file": fname,
+                "name": CHAPTER_NAMES.get(fname, fname),
+                "content": path.read_text(encoding="utf-8")
+            })
     return out
 
 
@@ -83,7 +79,11 @@ def get_chapter(filename: str):
     path = SRC / filename
     if not path.exists():
         raise HTTPException(404, f"{filename} not found")
-    return {"file": filename, "name": CHAPTER_NAMES.get(filename, filename), "content": path.read_text()}
+    return {
+        "file": filename,
+        "name": CHAPTER_NAMES.get(filename, filename),
+        "content": path.read_text(encoding="utf-8")
+    }
 
 
 @app.put("/chapter/{filename}")
@@ -109,8 +109,7 @@ def build_pdf():
             "node render.js interior_v11_raw.pdf",
             "python3 stamp_v11_server.py interior_v11_raw.pdf",
         ])
-        env = {**os.environ}
-        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300, env=env)
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
         if r.returncode != 0:
             raise HTTPException(500, f"Build failed:\n{r.stderr[-3000:]}")
         if not PDF.exists():
