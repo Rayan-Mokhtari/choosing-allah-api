@@ -166,9 +166,11 @@ def references_section(anchor):
             'to access, and updated as editions of this book are updated; scan the code below to reach it. '
             'Qur\u2019an quotations throughout follow The Clear Qur\u2019an translation by Dr. Mustafa Khattab, '
             'with clarifying words included without brackets for readability.')
-    if os.path.exists(D + 'f_19_refs_page.md'):
-    custom = open(D + 'f_19_refs_page.md', encoding='utf-8').read().strip()
-    if custom: note = ' '.join(custom.split())
+    refs_file = D + 'f_19_refs_page.md'
+    if os.path.exists(refs_file):
+        custom = open(refs_file, encoding='utf-8').read().strip()
+        if custom:
+            note = ' '.join(custom.split())
     return ('<a id="%s"></a><section class="chapter"><h1 class="chap nonum">References</h1>'
             '<p class="qr-note">%s</p>'
             '<img class="qr-img" src="qr_refs.png">'
@@ -181,9 +183,11 @@ def glossary_section(anchor):
             'and anything less familiar is explained the moment it appears. If you ever want a single place to look '
             'something up anyway, the full glossary for this book lives online, free to access and updated with every '
             'edition. Scan the code below to reach it.')
-    if os.path.exists(D + 'f_20_gloss_page.md'):
-    custom = open(D + 'f_20_gloss_page.md', encoding='utf-8').read().strip()
-    if custom: note = ' '.join(custom.split())
+    gloss_file = D + 'f_20_gloss_page.md'
+    if os.path.exists(gloss_file):
+        custom = open(gloss_file, encoding='utf-8').read().strip()
+        if custom:
+            note = ' '.join(custom.split())
     return ('<a id="%s"></a><section class="chapter"><h1 class="chap nonum">Glossary</h1>'
             '<p class="qr-note">%s</p>'
             '<img class="qr-img" src="qr_gloss.png">'
