@@ -1,8 +1,6 @@
 // Server-compatible Playwright PDF renderer
-// Uses CHROMIUM_PATH env var or falls back to 'chromium'
 const { chromium } = require('playwright');
 const path = require('path');
-const fs = require('fs');
 
 (async () => {
   const out = process.argv[2];
@@ -13,18 +11,25 @@ const fs = require('fs');
   const chromiumPath = process.env.CHROMIUM_PATH || null;
 
   const launchOpts = {
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--force-color-profile=srgb']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--force-color-profile=srgb'
+    ]
   };
   if (chromiumPath) launchOpts.executablePath = chromiumPath;
 
   const browser = await chromium.launch(launchOpts);
   const page = await browser.newPage();
-  await page.goto('file://' + htmlPath, { waitUntil: 'networkidle' });
+  await page.goto('file://' + htmlPath, { waitUntil: 'networkidle', timeout: 180000 });
   await page.pdf({
     path: path.join(BASE, out),
     preferCSSPageSize: true,
     printBackground: true,
-    displayHeaderFooter: false
+    displayHeaderFooter: false,
+    timeout: 300000
   });
   await browser.close();
   console.log('rendered', out);
