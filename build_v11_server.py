@@ -215,6 +215,9 @@ def glossary_section(anchor):
 
 CSS = (
     '@page { size: 5.5in 8.5in; margin: 0.8in 0.5in 0.85in 0.65in; }\n'
+    '@page cover-page { size: 5.5in 8.5in; margin: 0; }\n'
+    '.pg-cover { page: cover-page; width: 5.5in; height: 8.5in; page-break-after: always; overflow: hidden; display: block; }\n'
+    '.pg-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }\n'
     'body { font-family: Georgia, "Liberation Serif", serif; font-size: 11pt; line-height: 1.52;'
     '       color: #111; margin: 0; padding: 0; text-align: justify; hyphens: auto; orphans: 2; widows: 2; }\n'
     'p { margin: 0 0 0.13in 0; text-indent: 0; }\n'
@@ -313,7 +316,16 @@ def build_html(page_map=None):
     ded, eq, esrc, cop_lines = front_matter()
     ded_lines = [l.strip() for l in ded.split('<br>') if l.strip()]
     ded_html = ''.join('<p class="ded-line">%s</p>' % l for l in ded_lines)
+    # Cover page — full bleed, no margins, page 1 if a cover URL was synced.
+    cover_url_file = D + '__cover_url.txt'
+    cover_page = ''
+    if os.path.exists(cover_url_file):
+        cu = open(cover_url_file, encoding='utf-8').read().strip()
+        if cu:
+            cover_page = '<div class="pg-cover"><img src="%s" alt="Front cover"></div>' % cu
+
     h = '<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><style>' + CSS + '</style></head><body>'
+    h += cover_page
     h += '<div class="pg-half"><p class="halftitle">Choosing Allah</p></div>'
     h += '<div class="pg-title"><h1>Choosing<br>Allah</h1><p class="tp-author">Rayan Mokhtari</p></div>'
     h += '<div class="pg-copyright">' + ''.join('<p>%s</p>' % c for c in cop_lines) + '</div>'
