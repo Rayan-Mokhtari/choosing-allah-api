@@ -30,7 +30,7 @@ result = {}
 # appear after the preface, in manifest order.
 last = preface_page + 1
 for e in MAN:
-    if e['anchor'] == 'a-gloss': continue  # not printed in PDF — skip
+    if e['anchor'] == 'a-gloss': continue
     needle = norm(display(e['title'])).upper()
     found = None
     for i in range(last, len(doc)):
