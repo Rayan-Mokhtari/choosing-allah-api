@@ -26,6 +26,10 @@ openers = set(pm.values()) | {preface}
 MAN = json.load(open('/data/book/src16/manifest.json'))
 TITLES = {}
 for e in MAN:
+    if e['anchor'] == 'a-refs':
+        # The online-resources page is a single opener right after the preface;
+        # it must not become a running head for the pages that follow it.
+        continue
     t = e['title']
     if '. ' in t and t.split('. ', 1)[0].isdigit():
         t = t.split('. ', 1)[1]
