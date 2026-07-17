@@ -2,7 +2,7 @@
 # v11 interior build — manifest-driven. Full layout overhaul.
 import re, os, sys, json
 
-D = '/data/book/src16/'
+D = './src16/'
 
 def strip_fm(t):
     if t.lstrip().startswith('---'):
@@ -166,6 +166,11 @@ def references_section(anchor):
             'to access, and updated as editions of this book are updated; scan the code below to reach it. '
             'Qur\u2019an quotations throughout follow The Clear Qur\u2019an translation by Dr. Mustafa Khattab, '
             'with clarifying words included without brackets for readability.')
+    refs_file = D + 'f_19_refs_page.md'
+    if os.path.exists(refs_file):
+        custom = open(refs_file, encoding='utf-8').read().strip()
+        if custom:
+            note = ' '.join(custom.split())
     return ('<a id="%s"></a><section class="chapter"><h1 class="chap nonum">References</h1>'
             '<p class="qr-note">%s</p>'
             '<img class="qr-img" src="qr_refs.png">'
@@ -178,6 +183,11 @@ def glossary_section(anchor):
             'and anything less familiar is explained the moment it appears. If you ever want a single place to look '
             'something up anyway, the full glossary for this book lives online, free to access and updated with every '
             'edition. Scan the code below to reach it.')
+    gloss_file = D + 'f_20_gloss_page.md'
+    if os.path.exists(gloss_file):
+        custom = open(gloss_file, encoding='utf-8').read().strip()
+        if custom:
+            note = ' '.join(custom.split())
     return ('<a id="%s"></a><section class="chapter"><h1 class="chap nonum">Glossary</h1>'
             '<p class="qr-note">%s</p>'
             '<img class="qr-img" src="qr_gloss.png">'
@@ -242,8 +252,8 @@ CSS = (
 
 
 REFS_MAP = []
-if os.path.exists('/data/book/refs_map.json'):
-    with open('/data/book/refs_map.json') as _f:
+if os.path.exists('./refs_map.json'):
+    with open('./refs_map.json') as _f:
         REFS_MAP = json.load(_f)
 
 def inject_refs(md, fname):
@@ -302,10 +312,10 @@ if __name__ == '__main__':
     if len(sys.argv) > 1 and os.path.exists(sys.argv[1]):
         with open(sys.argv[1]) as f: page_map = json.load(f)
     html = build_html(page_map)
-    with open('/data/book/interior.html', 'w', encoding='utf-8') as f:
+    with open('./interior.html', 'w', encoding='utf-8') as f:
         f.write(html)
     fns = {str(g['num']): {'term': g['term'], 'defn': g['defn']} for g in GLOSSARY if g['done']}
-    with open('/data/book/footnotes.json', 'w', encoding='utf-8') as f:
+    with open('./footnotes.json', 'w', encoding='utf-8') as f:
         json.dump(fns, f, ensure_ascii=False)
     missed = [g['term'] for g in GLOSSARY if not g['done']]
     print('interior.html written;', 'page numbers ON' if page_map else 'pass 1')
