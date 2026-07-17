@@ -42,7 +42,6 @@ CHAPTER_NAMES = {
     "f_16.md": "16 · How to believe what you already know",
     "f_17_final_word.md":    "Your turn",
     "f_19_refs_page.md":     "References page — printed text",
-    "f_20_gloss_page.md":    "Glossary page — printed text",
     "manifest.json":         "Contents — chapter titles & order",
     "f_18_references.md":    "References (online list — not printed)",
     "glossary.md":           "Glossary (term definitions — not printed)",
