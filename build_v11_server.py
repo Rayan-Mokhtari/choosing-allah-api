@@ -141,9 +141,9 @@ def toc_case(title):
 def build_toc_html(page_map):
     rows = []
     for e in MANIFEST:
-        if e['anchor'] == 'a-gloss': continue  # consolidated into single choosingallah.com page
+        if e['anchor'] == 'a-gloss': continue
         num = page_map.get(e['anchor'],'') if page_map else ''
-        title = 'choosingallah.com' if e['anchor'] == 'a-refs' else toc_case(e['title'])
+        title = 'Online resources' if e['anchor'] == 'a-refs' else toc_case(e['title'])
         rows.append('<div class="toc-row"><span class="toc-title">%s</span><span class="toc-dots"></span><span class="toc-num">%s</span></div>' % (title, num if num else ''))
     return '<section class="chapter toc"><h1 class="chap nonum">Contents</h1><div class="toc-body">' + '\n'.join(rows) + '</div></section>'
 
@@ -197,7 +197,7 @@ def menu_section(anchor):
             'Every Qur\u2019an passage quoted in the book is there in audio. '
             'Free to access. Scan the code below.')
     return ('<a id="%s"></a><section class="chapter">'
-            '<h1 class="chap nonum">choosingallah.com</h1>'
+            '<h1 class="chap nonum">Online resources</h1>'
             '<p class="qr-note">%s</p>'
             '%s'
             '<p class="qr-url">%s</p></section>') % (anchor, note, qr_tag, url)
@@ -328,7 +328,7 @@ def build_html(page_map=None):
         if e['anchor'] == 'a-refs':
             back_body += menu_section(e['anchor'])
         elif e['anchor'] == 'a-gloss':
-            pass  # consolidated into single choosingallah.com page above
+            pass
     preface_html = parse(load('f_00_preface_clean.md'), 'Before we begin')
     preface_html = preface_html.replace('<section class="chapter">', '<section class="chapter preface">', 1)
     body = ''
@@ -340,7 +340,6 @@ def build_html(page_map=None):
     ded_lines = [l.strip() for l in ded.split('<br>') if l.strip()]
     ded_html = ''.join('<p class="ded-line">%s</p>' % l for l in ded_lines)
     # Cover page — full bleed, no margins, page 1 if a cover URL was synced.
-    # Try both the new JSON file (f_cover_url.md) and the legacy plain-text file.
     cover_page = ''
     for _cuf in (D + 'f_cover_url.md', D + '__cover_url.txt'):
         if not os.path.exists(_cuf): continue
@@ -352,8 +351,6 @@ def build_html(page_map=None):
         except Exception:
             cu = _raw
         if cu:
-            # Download and embed as base64 so WeasyPrint never needs to
-            # fetch an external URL (it often refuses for security reasons).
             try:
                 import urllib.request, base64 as _b64
                 req = urllib.request.Request(cu, headers={'User-Agent': 'Mozilla/5.0'})
@@ -365,7 +362,7 @@ def build_html(page_map=None):
                               '<img src="data:%s;base64,%s" alt="Front cover">'
                               '</div>') % (ct, b64str)
             except Exception as _e:
-                print('Cover image download failed, skipping cover page:', _e)
+                print('Cover image download failed:', _e)
         break
 
     h = '<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><style>' + CSS + '</style></head><body>'
