@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# v11 interior build — manifest-driven. Full layout overhaul.
+# v11 interior build, manifest-driven. Full layout overhaul.
 import re, os, sys, json
 
 D = './src16/'
@@ -140,11 +140,20 @@ def toc_case(title):
 
 def build_toc_html(page_map):
     rows = []
+    refs_row = None
     for e in MANIFEST:
         if e['anchor'] == 'a-gloss': continue
         num = page_map.get(e['anchor'],'') if page_map else ''
         title = 'Online resources' if e['anchor'] == 'a-refs' else toc_case(e['title'])
-        rows.append('<div class="toc-row"><span class="toc-title">%s</span><span class="toc-dots"></span><span class="toc-num">%s</span></div>' % (title, num if num else ''))
+        row = '<div class="toc-row"><span class="toc-title">%s</span><span class="toc-dots"></span><span class="toc-num">%s</span></div>' % (title, num if num else '')
+        if e['anchor'] == 'a-refs':
+            refs_row = row
+        else:
+            rows.append(row)
+    # Online resources sits right after the preface, before the Contents page
+    # itself, so its row leads the list and page numbers stay ascending.
+    if refs_row is not None:
+        rows.insert(0, refs_row)
     return '<section class="chapter toc"><h1 class="chap nonum">Contents</h1><div class="toc-body">' + '\n'.join(rows) + '</div></section>'
 
 def front_matter():
@@ -154,14 +163,14 @@ def front_matter():
         m = re.search(r'\*\*' + label + r':?\*\*:?\s*(.*?)(?=\n\s*\*\*|\Z)', t, re.S)
         return ' '.join(m.group(1).split()) if m else None
     # Pull every field from the file. The file may or may not have
-    # **Label:** prefixes — handle both layouts.
+    # **Label:** prefixes; handle both layouts.
     cop = grab('Copyright page') or ''
 
     # Dedication: try the label first; if absent, use everything before
     # the first **-prefixed label (or before copyright) as the dedication.
     ded_raw = grab('Dedication')
     if not ded_raw:
-        # No label — the whole file (minus copyright block) is the dedication.
+        # No label: the whole file (minus copyright block) is the dedication.
         ded_raw = re.sub(r'\*\*[^*]+\*\*:?.*', '', t, flags=re.S).strip()
     ded = norm_quotes(ded_raw) if ded_raw else 'I don’t know your name.<br>But I thought about you on every single page.'
 
@@ -182,7 +191,7 @@ def front_matter():
     return ded, eq, esrc, cop_lines
 
 def menu_section(anchor):
-    url = 'https://choosingallah.com'
+    url = 'https://choosingallah.com/resources'
     qr_tag = '<img class="qr-img" src="qr_refs.png">'
     try:
         import urllib.request, base64
@@ -192,49 +201,20 @@ def menu_section(anchor):
         qr_tag = '<img class="qr-img" src="data:image/png;base64,%s">' % b64
     except Exception:
         pass
-    note = ('The references, glossary, and recitations for this book are all online at choosingallah.com. '
+    note = ('The references, glossary, and recitations for this book are all online at choosingallah.com/resources. '
             'Every numbered source is documented and linked. Every Arabic term is defined. '
             'Every Qur\u2019an passage quoted in the book is there in audio. '
             'Free to access. Scan the code below.')
+    note_file = D + 'f_19_refs_page.md'
+    if os.path.exists(note_file):
+        custom = open(note_file, encoding='utf-8').read().strip()
+        if custom:
+            note = ' '.join(custom.split())
     return ('<a id="%s"></a><section class="chapter">'
             '<h1 class="chap nonum">Online resources</h1>'
             '<p class="qr-note">%s</p>'
             '%s'
             '<p class="qr-url">%s</p></section>') % (anchor, note, qr_tag, url)
-
-def references_section(anchor):
-    url = 'https://choosingallah.com/references'
-    note = ('When a fact, a study, or a figure came up in these pages, it carried a small number. Every '
-            'numbered source is documented in the full reference list for this book, kept online, free '
-            'to access, and updated as editions of this book are updated; scan the code below to reach it. '
-            'Qur\u2019an quotations throughout follow The Clear Qur\u2019an translation by Dr. Mustafa Khattab, '
-            'with clarifying words included without brackets for readability.')
-    refs_file = D + 'f_19_refs_page.md'
-    if os.path.exists(refs_file):
-        custom = open(refs_file, encoding='utf-8').read().strip()
-        if custom:
-            note = ' '.join(custom.split())
-    return ('<a id="%s"></a><section class="chapter"><h1 class="chap nonum">References</h1>'
-            '<p class="qr-note">%s</p>'
-            '<img class="qr-img" src="qr_refs.png">'
-            '<p class="qr-url">%s</p></section>') % (anchor, note, url)
-
-def glossary_section(anchor):
-    url = 'https://choosingallah.com/glossary'
-    note = ('Common terms that have passed into everyday Muslim speech, such as salah, dua, ummah, tawbah, '
-            'and bismillah, are used in these pages the way we actually speak them, without translation or italics, '
-            'and anything less familiar is explained the moment it appears. If you ever want a single place to look '
-            'something up anyway, the full glossary for this book lives online, free to access and updated with every '
-            'edition. Scan the code below to reach it.')
-    gloss_file = D + 'f_20_gloss_page.md'
-    if os.path.exists(gloss_file):
-        custom = open(gloss_file, encoding='utf-8').read().strip()
-        if custom:
-            note = ' '.join(custom.split())
-    return ('<a id="%s"></a><section class="chapter"><h1 class="chap nonum">Glossary</h1>'
-            '<p class="qr-note">%s</p>'
-            '<img class="qr-img" src="qr_gloss.png">'
-            '<p class="qr-url">%s</p></section>') % (anchor, note, url)
 
 CSS = (
     '@page { size: 5.5in 8.5in; margin: 0.8in 0.5in 0.85in 0.65in; }\n'
@@ -323,12 +303,9 @@ def inject_refs(md, fname):
     return md
 
 def build_html(page_map=None):
-    back_body = ''
-    for e in MANIFEST:
-        if e['anchor'] == 'a-refs':
-            back_body += menu_section(e['anchor'])
-        elif e['anchor'] == 'a-gloss':
-            pass
+    # The single online-resources page sits right after the preface (not in
+    # the back matter), so readers meet it before the table of contents.
+    resources_html = menu_section('a-refs')
     preface_html = parse(load('f_00_preface_clean.md'), 'Before we begin')
     preface_html = preface_html.replace('<section class="chapter">', '<section class="chapter preface">', 1)
     body = ''
@@ -339,7 +316,7 @@ def build_html(page_map=None):
     ded, eq, esrc, cop_lines = front_matter()
     ded_lines = [l.strip() for l in ded.split('<br>') if l.strip()]
     ded_html = ''.join('<p class="ded-line">%s</p>' % l for l in ded_lines)
-    # Cover page — full bleed, no margins, page 1 if a cover URL was synced.
+    # Cover page: full bleed, no margins, page 1 if a cover URL was synced.
     cover_page = ''
     for _cuf in (D + 'f_cover_url.md', D + '__cover_url.txt'):
         if not os.path.exists(_cuf): continue
@@ -375,9 +352,10 @@ def build_html(page_map=None):
     # blank verso so the preface opens on a recto (p7), matching print convention
     h += '<div style="height:6.8in; page-break-after:always;"></div>'
     h += preface_html
-    # blank verso so the Contents opens on a recto (p9), matching print convention
-    h += '<div style="height:6.8in; page-break-after:always;"></div>'
-    h += toc_html + body + back_body + '</body></html>'
+    # The online-resources page fills the verso after the preface (p8), so the
+    # Contents still opens on a recto (p9), matching print convention.
+    h += resources_html
+    h += toc_html + body + '</body></html>'
     return h
 
 if __name__ == '__main__':
