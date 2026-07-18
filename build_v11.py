@@ -195,10 +195,10 @@ def menu_section(anchor):
     except Exception:
         pass
     # No text on this page by design. Everything it needs to say lives in the
-    # preface. Just the heading and the QR code, centered on the page.
-    return ('<a id="%s"></a><section class="chapter" style="height:6.8in; display:flex; flex-direction:column;">'
+    # preface. Just the heading with the QR code sitting a little below it.
+    return ('<a id="%s"></a><section class="chapter" style="height:6.8in;">'
             '<h1 class="chap nonum">Online resources</h1>'
-            '<div style="flex:1; display:flex; align-items:center; justify-content:center;">%s</div>'
+            '<div style="display:flex; justify-content:center; margin-top:0.25in;">%s</div>'
             '</section>') % (anchor, qr_tag)
 
 CSS = (
