@@ -140,20 +140,12 @@ def toc_case(title):
 
 def build_toc_html(page_map):
     rows = []
-    refs_row = None
     for e in MANIFEST:
-        if e['anchor'] == 'a-gloss': continue
+        # a-gloss has no printed page; a-refs (Online resources) is the single
+        # QR page right after the preface and stays out of the Contents by design.
+        if e['anchor'] in ('a-gloss', 'a-refs'): continue
         num = page_map.get(e['anchor'],'') if page_map else ''
-        title = 'Online resources' if e['anchor'] == 'a-refs' else toc_case(e['title'])
-        row = '<div class="toc-row"><span class="toc-title">%s</span><span class="toc-dots"></span><span class="toc-num">%s</span></div>' % (title, num if num else '')
-        if e['anchor'] == 'a-refs':
-            refs_row = row
-        else:
-            rows.append(row)
-    # Online resources sits right after the preface, before the Contents page
-    # itself, so its row leads the list and page numbers stay ascending.
-    if refs_row is not None:
-        rows.insert(0, refs_row)
+        rows.append('<div class="toc-row"><span class="toc-title">%s</span><span class="toc-dots"></span><span class="toc-num">%s</span></div>' % (toc_case(e['title']), num if num else ''))
     return '<section class="chapter toc"><h1 class="chap nonum">Contents</h1><div class="toc-body">' + '\n'.join(rows) + '</div></section>'
 
 def front_matter():
@@ -201,20 +193,12 @@ def menu_section(anchor):
         qr_tag = '<img class="qr-img" src="data:image/png;base64,%s">' % b64
     except Exception:
         pass
-    note = ('The references, glossary, and recitations for this book are all online at choosingallah.com/resources. '
-            'Every numbered source is documented and linked. Every Arabic term is defined. '
-            'Every Qur\u2019an passage quoted in the book is there in audio. '
-            'Free to access. Scan the code below.')
-    note_file = D + 'f_19_refs_page.md'
-    if os.path.exists(note_file):
-        custom = open(note_file, encoding='utf-8').read().strip()
-        if custom:
-            note = ' '.join(custom.split())
-    return ('<a id="%s"></a><section class="chapter">'
+    # No text on this page by design. Everything it needs to say lives in the
+    # preface. Just the heading and the QR code, centered on the page.
+    return ('<a id="%s"></a><section class="chapter" style="height:6.8in; display:flex; flex-direction:column;">'
             '<h1 class="chap nonum">Online resources</h1>'
-            '<p class="qr-note">%s</p>'
-            '%s'
-            '<p class="qr-url">%s</p></section>') % (anchor, note, qr_tag, url)
+            '<div style="flex:1; display:flex; align-items:center; justify-content:center;">%s</div>'
+            '</section>') % (anchor, qr_tag)
 
 CSS = (
     '@page { size: 5.5in 8.5in; margin: 0.8in 0.5in 0.85in 0.65in; }\n'
