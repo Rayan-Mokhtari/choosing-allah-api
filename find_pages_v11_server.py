@@ -11,7 +11,11 @@ def display(title):
 
 def norm(s):
     s = s.replace('\u2019', "'").replace('\u2018', "'")
-    return ' '.join(s.split())
+    s = ' '.join(s.split())
+    # PDF extraction inserts a space after a hyphen when a heading wraps at
+    # that hyphen. Treat GREAT- GRANDFATHER as GREAT-GRANDFATHER in fallback
+    # title matching.
+    return re.sub(r'(?<=\w)-\s+(?=\w)', '-', s)
 
 doc = fitz.open('./pass1.pdf')
 pages = [norm(doc[i].get_text()) for i in range(len(doc))]
