@@ -127,10 +127,14 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True):
         if not el.startswith('<h2>'): break
     eyebrow, display = split_title(chapter_title)
     anchor = '<a id="%s"></a>' % anchor_id if anchor_id else ''
+    # Keep an extractable anchor token inside the printed heading. Empty HTML
+    # anchors do not survive PDF text extraction, and title-based detection can
+    # fail when Chromium wraps a hyphenated title (for example, GREAT-\nGRANDFATHER).
+    marker = '<span class="page-marker">[[PG:%s]]</span>' % anchor_id if anchor_id else ''
     if eyebrow:
-        head = '%s<section class="chapter"><div class="eyebrow">%s</div><h1 class="chap">%s</h1>' % (anchor, eyebrow, display)
+        head = '%s<section class="chapter"><div class="eyebrow">%s</div><h1 class="chap">%s%s</h1>' % (anchor, eyebrow, marker, display)
     else:
-        head = '%s<section class="chapter"><h1 class="chap nonum">%s</h1>' % (anchor, display)
+        head = '%s<section class="chapter"><h1 class="chap nonum">%s%s</h1>' % (anchor, marker, display)
     return head + '\n'.join(body) + '</section>'
 
 MANIFEST = json.load(open(D + 'manifest.json', encoding='utf-8'))
@@ -237,8 +241,10 @@ CSS = (
     '.ded-line:first-child { padding-top:0; }\n'
     # Chapters
     '.chapter { page-break-before:always; }\n'
-    'h1.chap { text-align:center; font-size:16.5pt; font-weight:400; letter-spacing:3px;'
+    'h1.chap { position:relative; text-align:center; font-size:16.5pt; font-weight:400; letter-spacing:3px;'
     '          text-transform:uppercase; margin:0 0 0.42in 0; color:#111; }\n'
+    '.page-marker { position:absolute; left:0; top:0; color:#fff; font-size:1px; line-height:1;'
+    '               letter-spacing:0; text-transform:none; white-space:nowrap; }\n'
     'h1.chap.nonum { margin-top:0.55in; }\n'
     '.preface h1.chap.nonum { margin:0.3in 0 0.32in 0; }\n'
     '.preface p { margin:0 0 0.10in 0; }\n'
