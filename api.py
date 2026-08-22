@@ -104,10 +104,22 @@ def get_chapter(filename: str):
 def update_chapter(filename: str, body: ChapterBody, x_api_token: str | None = Header(default=None)):
     _check_token(x_api_token)
     path = _safe_path(filename)
-    if not path.exists() and filename != "f_cover_url.md":
-        raise HTTPException(404, f"{filename} not found")
+    existed = path.exists()
+    can_create = (
+        filename in {"f_cover_url.md", "manifest.backup.json"}
+        or (
+            filename.endswith(".md")
+            and len(filename) <= 120
+            and filename[0].isalnum()
+            and all(char.isalnum() or char in "._-" for char in filename)
+        )
+    )
+    if not existed and not can_create:
+        raise HTTPException(400, f"{filename} cannot be created")
     path.write_text(body.content, encoding="utf-8")
-    return {"ok": True, "file": filename}
+    if not existed and filename.endswith(".md") and filename != "f_cover_url.md":
+        ORDER.append(filename)
+    return {"ok": True, "file": filename, "created": not existed}
 
 
 @app.post("/build")
