@@ -1,102 +1,108 @@
 [
- {
-  "file": "f_00_intro.md",
-  "title": "Introduction",
-  "anchor": "a-intro"
- },
- {
-  "file": "f_01.md",
-  "title": "1. So, who is Allah?",
-  "anchor": "a-1"
- },
- {
-  "file": "f_02.md",
-  "title": "2. Why should you believe in Allah?",
-  "anchor": "a-2"
- },
- {
-  "file": "f_03.md",
-  "title": "3. Why the Qur'an is the word of Allah",
-  "anchor": "a-3"
- },
- {
-  "file": "f_04.md",
-  "title": "4. The man who carried the message",
-  "anchor": "a-4"
- },
- {
-  "file": "f_05.md",
-  "title": "5. Why Islam, and not another religion?",
-  "anchor": "a-5"
- },
- {
-  "file": "f_06.md",
-  "title": "6. What do we mean when we say La ilaha illallah?",
-  "anchor": "a-6"
- },
- {
-  "file": "f_07.md",
-  "title": "7. The religion that reached you",
-  "anchor": "a-7"
- },
- {
-  "file": "f_08.md",
-  "title": "8. What is your purpose in life?",
-  "anchor": "a-8"
- },
- {
-  "file": "f_09.md",
-  "title": "9. Would the Maker leave you alone?",
-  "anchor": "a-9"
- },
- {
-  "file": "f_10.md",
-  "title": "10. Being Muslim in your own skin",
-  "anchor": "a-10"
- },
- {
-  "file": "f_11.md",
-  "title": "11. Isn't Islam unfair to women?",
-  "anchor": "a-11"
- },
- {
-  "file": "f_12.md",
-  "title": "12. Why does Allah let bad things happen?",
-  "anchor": "a-12"
- },
- {
-  "file": "f_13.md",
-  "title": "13. What happens after you die?",
-  "anchor": "a-13"
- },
- {
-  "file": "f_14.md",
-  "title": "14. How to return to Him",
-  "anchor": "a-14"
- },
- {
-  "file": "f_15.md",
-  "title": "15. How to properly seek knowledge",
-  "anchor": "a-15"
- },
- {
-  "file": "f_16.md",
-  "title": "16. How to believe what you already know",
-  "anchor": "a-16"
- },
- {
-  "file": "f_17_final_word.md",
-  "title": "Your turn",
-  "anchor": "a-final"
- },
- {
-  "file": "f_18_references.md",
-  "title": "References",
-  "anchor": "a-refs"
- },
- {
-  "file": null,
-  "title": "Glossary",
-  "anchor": "a-gloss"
- }
+  {
+    "file": "f_00_intro.md",
+    "title": "Introduction",
+    "anchor": "a-intro"
+  },
+  {
+    "file": "f_01.md",
+    "title": "1. Who is Allah?",
+    "anchor": "a-1"
+  },
+  {
+    "file": "f_02.md",
+    "title": "2. Why should you believe in Allah?",
+    "anchor": "a-2"
+  },
+  {
+    "file": "f_03.md",
+    "title": "3. Why the Qur'an is the word of Allah",
+    "anchor": "a-3"
+  },
+  {
+    "file": "f_04.md",
+    "title": "4. The life that explained the Book",
+    "anchor": "a-4"
+  },
+  {
+    "file": "f_17_hadith.md",
+    "title": "5. Trust me, my great-grandfather heard it",
+    "anchor": "a-5",
+    "includeInFinal": true
+  },
+  {
+    "file": "f_05.md",
+    "title": "6. Why Islam, and not another religion?",
+    "anchor": "a-6"
+  },
+  {
+    "file": "f_07.md",
+    "title": "7. The religion that reached you",
+    "anchor": "a-7"
+  },
+  {
+    "file": "f_11.md",
+    "title": "8. Isn't Islam unfair to women?",
+    "anchor": "a-8"
+  },
+  {
+    "file": "f_06.md",
+    "title": "9. Many different lords",
+    "anchor": "a-9"
+  },
+  {
+    "file": "f_08.md",
+    "title": "10. What is your purpose in life?",
+    "anchor": "a-10"
+  },
+  {
+    "file": "f_09.md",
+    "title": "11. Who gets the final word?",
+    "anchor": "a-11"
+  },
+  {
+    "file": "f_10.md",
+    "title": "12. Being Muslim in your own skin",
+    "anchor": "a-12"
+  },
+  {
+    "file": "f_12.md",
+    "title": "13. Why does Allah let bad things happen?",
+    "anchor": "a-13"
+  },
+  {
+    "file": "f_13.md",
+    "title": "14. What happens after you die?",
+    "anchor": "a-14"
+  },
+  {
+    "file": "f_15.md",
+    "title": "15. How to properly seek knowledge",
+    "anchor": "a-15"
+  },
+  {
+    "file": "f_14.md",
+    "title": "16. How to return to Allah",
+    "anchor": "a-16"
+  },
+  {
+    "file": "f_16.md",
+    "title": "17. How to believe what you already know",
+    "anchor": "a-17"
+  },
+  {
+    "file": "f_17_final_word.md",
+    "title": "Your turn",
+    "anchor": "a-final"
+  },
+  {
+    "file": "f_18_references.md",
+    "title": "References",
+    "anchor": "a-refs"
+  },
+  {
+    "file": null,
+    "title": "Glossary",
+    "anchor": "a-gloss"
+  }
 ]
