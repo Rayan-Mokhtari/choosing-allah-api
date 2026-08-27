@@ -1,5 +1,5 @@
 """Choosing Allah PDF Build API"""
-import os, subprocess, threading
+import json, os, subprocess, threading
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import FileResponse
@@ -17,6 +17,7 @@ app.add_middleware(
 BASE = Path(__file__).parent
 SRC  = BASE / "src16"
 PDF  = BASE / "interior.pdf"
+MANIFEST = SRC / "manifest.json"
 
 # Write access is guarded by a shared secret when CHAPTERS_API_TOKEN is set
 # in the environment. The Lovable server functions already send it as the
@@ -36,33 +37,51 @@ def _safe_path(filename: str) -> Path:
 
 _build_lock = threading.Lock()
 
-CHAPTER_NAMES = {
+# These files sit outside the printed manifest but are still editable. Printed
+# chapter titles and order are loaded from manifest.json so the API cannot drift
+# away from the editor's canonical spine again.
+STATIC_CHAPTER_NAMES = {
     "f_00_front_matter.md":  "Dedication, Epigraph & Copyright",
     "f_00_preface_clean.md": "Before we begin (Preface)",
-    "f_00_intro.md":         "Introduction",
-    "f_01.md": "1 · So, who is Allah?",
-    "f_02.md": "2 · Why should you believe in Allah?",
-    "f_03.md": "3 · Why the Qur'an is the word of Allah",
-    "f_04.md": "4 · The man who carried the message",
-    "f_05.md": "5 · Why Islam, and not another religion?",
-    "f_06.md": "6 · La ilaha illallah",
-    "f_07.md": "7 · The religion that reached you",
-    "f_08.md": "8 · What is your purpose in life?",
-    "f_09.md": "9 · Would the Maker leave you alone?",
-    "f_10.md": "10 · Being Muslim in your own skin",
-    "f_11.md": "11 · Isn't Islam unfair to women?",
-    "f_12.md": "12 · Why does Allah let bad things happen?",
-    "f_13.md": "13 · What happens after you die?",
-    "f_14.md": "14 · How to return to Him",
-    "f_15.md": "15 · How to properly seek knowledge",
-    "f_16.md": "16 · How to believe what you already know",
-    "f_17_final_word.md":    "Your turn",
     "manifest.json":         "Contents (chapter titles and order)",
-    "f_18_references.md":    "References (online list, not printed)",
     "glossary.md":           "Glossary (term definitions, not printed)",
 }
 
-ORDER = list(CHAPTER_NAMES.keys())
+PRELUDE_FILES = ("f_00_front_matter.md", "f_00_preface_clean.md")
+EDITOR_FILES = ("manifest.json", "glossary.md")
+
+
+def _manifest_entries() -> list[dict]:
+    try:
+        data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [entry for entry in data if isinstance(entry, dict)]
+
+
+def _chapter_names() -> dict[str, str]:
+    names = dict(STATIC_CHAPTER_NAMES)
+    for entry in _manifest_entries():
+        filename = entry.get("file")
+        title = entry.get("title")
+        if isinstance(filename, str) and isinstance(title, str):
+            names[filename] = title
+    return names
+
+
+def _chapter_order() -> list[str]:
+    ordered = list(PRELUDE_FILES)
+    ordered.extend(
+        entry["file"]
+        for entry in _manifest_entries()
+        if isinstance(entry.get("file"), str)
+    )
+    ordered.extend(EDITOR_FILES)
+    # Keep the first occurrence when a special editor file also appears in the
+    # manifest, as References currently does.
+    return list(dict.fromkeys(ordered))
 
 
 class ChapterBody(BaseModel):
@@ -77,12 +96,13 @@ def health():
 @app.get("/chapters")
 def list_chapters():
     out = []
-    for fname in ORDER:
+    names = _chapter_names()
+    for fname in _chapter_order():
         path = SRC / fname
         if path.exists():
             out.append({
                 "file": fname,
-                "name": CHAPTER_NAMES.get(fname, fname),
+                "name": names.get(fname, fname),
                 "content": path.read_text(encoding="utf-8")
             })
     return out
@@ -91,12 +111,17 @@ def list_chapters():
 @app.get("/chapter/{filename}")
 def get_chapter(filename: str):
     path = _safe_path(filename)
-    if not path.exists() and filename != "f_cover_url.md":
-        raise HTTPException(404, f"{filename} not found")
+    if not path.exists():
+        if filename == "f_cover_url.md":
+            content = ""
+        else:
+            raise HTTPException(404, f"{filename} not found")
+    else:
+        content = path.read_text(encoding="utf-8")
     return {
         "file": filename,
-        "name": CHAPTER_NAMES.get(filename, filename),
-        "content": path.read_text(encoding="utf-8")
+        "name": _chapter_names().get(filename, filename),
+        "content": content
     }
 
 
@@ -117,8 +142,6 @@ def update_chapter(filename: str, body: ChapterBody, x_api_token: str | None = H
     if not existed and not can_create:
         raise HTTPException(400, f"{filename} cannot be created")
     path.write_text(body.content, encoding="utf-8")
-    if not existed and filename.endswith(".md") and filename != "f_cover_url.md":
-        ORDER.append(filename)
     return {"ok": True, "file": filename, "created": not existed}
 
 
