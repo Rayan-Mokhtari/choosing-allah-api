@@ -31,7 +31,12 @@ elif EXPORT_FILE in RESOURCE_FILES:
     result = {'_preface': 1, 'a-refs': marker('a-refs')}
 elif EXPORT_FILE and EXPORT_FILE != 'manifest.json':
     entry = MANIFEST[0]
-    result = {'_preface': 1, entry['anchor']: marker(entry['anchor']) or heading(entry['title'])}
+    # Standalone exports contain only the selected section and deliberately
+    # start it on page 1. Chromium can omit the tiny white marker from PDF text
+    # extraction (seen with the Introduction), so page 1 is the authoritative
+    # fallback when neither the marker nor the displayed heading survives.
+    found = marker(entry['anchor']) or heading(entry['title']) or (1 if len(doc) else None)
+    result = {'_preface': 1, entry['anchor']: found}
 else:
     preface = marker('a-preface') or heading('Before we begin')
     result = {'_preface': preface, '_toc': marker('a-toc'), 'a-refs': marker('a-refs')}
