@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 # v11 interior build, manifest-driven. Full layout overhaul.
-import re, os, sys, json
+import re, os, sys, json, base64, io
+from html import escape
+from pathlib import Path
+
+ASSETS = Path(os.environ.get('BOOK_ASSET_DIR', Path(__file__).resolve().parent))
+os.chdir(os.environ.get('BOOK_BUILD_DIR', Path(__file__).resolve().parent))
+EXPORT_FILE = os.environ.get('BOOK_EXPORT_FILE', '')
+EXPORT_TITLE = os.environ.get('BOOK_EXPORT_TITLE', '')
+RESOURCES_URL = 'https://choosingallah.com/resources'
+PRELUDE_FILES = ('f_00_front_matter.md', 'f_00_preface_clean.md')
+RESOURCE_FILES = ('f_18_references.md', 'f_19_refs_page.md', 'f_20_gloss_page.md')
 
 D = './src16/'
 
@@ -33,7 +43,9 @@ def absorb(s):
 def inline(s):
     s = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', s)
     s = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', s)
-    s = re.sub(r'\[\[FN(\d+)\]\]', r'<sup class="fn">\1</sup>', s)
+    s = re.sub(r'\[\[FN(\d+)\]\]',
+               lambda m: '<sup class="fn"><a href="%s/references#ref-%s">%s</a></sup>'
+               % (RESOURCES_URL, m.group(1), m.group(1)), s)
     # merge adjacent reference markers into one superscript: 20,21 (not 2021)
     s = s.replace('</sup><sup class="fn">', ',')
     return s
@@ -60,7 +72,8 @@ def clean_cell(s):
     return ' '.join(s.split())
 
 def load_glossary():
-    t = open(D + 'glossary.md', encoding='utf-8').read()
+    if not os.path.exists(D + 'glossary.md'): return []
+    t = Path(D + 'glossary.md').read_text(encoding='utf-8')
     rows = re.findall(r'<tr>\s*<td>(.*?)</td>\s*<td>(.*?)</td>\s*<td>(.*?)</td>\s*</tr>', t, re.S)
     terms = []
     for term, defn, first in rows:
@@ -97,6 +110,8 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True):
             if not in_ul: body.append('<ul>'); in_ul = True
             body.append('<li>%s</li>' % l[2:].strip()); continue
         if in_ul: body.append('</ul>'); in_ul = False
+        if raw.startswith('### '):
+            body.append('<h3>%s</h3>' % l[4:].strip()); continue
         if raw.startswith('## '):
             body.append('<h2>%s</h2>' % l[3:].strip()); continue
         if raw.startswith('> '):
@@ -126,23 +141,38 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True):
             continue  # short opener line: the cap belongs on the next full paragraph
         if not el.startswith('<h2>'): break
     eyebrow, display = split_title(chapter_title)
-    anchor = '<a id="%s"></a>' % anchor_id if anchor_id else ''
+    # Put the destination on the section, not before its page break. Otherwise
+    # Chromium links to the preceding page even when the printed number is right.
+    section_id = ' id="%s"' % escape(anchor_id, quote=True) if anchor_id else ''
     # Keep an extractable anchor token inside the printed heading. Empty HTML
     # anchors do not survive PDF text extraction, and title-based detection can
     # fail when Chromium wraps a hyphenated title (for example, GREAT-\nGRANDFATHER).
     marker = '<span class="page-marker">[[PG:%s]]</span>' % anchor_id if anchor_id else ''
     if eyebrow:
-        head = '%s<section class="chapter"><div class="eyebrow">%s</div><h1 class="chap">%s%s</h1>' % (anchor, eyebrow, marker, display)
+        head = '<section class="chapter"%s><div class="eyebrow">%s</div><h1 class="chap">%s%s</h1>' % (section_id, eyebrow, marker, escape(display))
     else:
-        head = '%s<section class="chapter"><h1 class="chap nonum">%s%s</h1>' % (anchor, marker, display)
+        head = '<section class="chapter"%s><h1 class="chap nonum">%s%s</h1>' % (section_id, marker, escape(display))
     return head + '\n'.join(body) + '</section>'
 
-MANIFEST = json.load(open(D + 'manifest.json', encoding='utf-8'))
+ALL_MANIFEST = json.loads(Path(D + 'manifest.json').read_text(encoding='utf-8'))
+if EXPORT_FILE and EXPORT_FILE != 'manifest.json':
+    MANIFEST = [entry for entry in ALL_MANIFEST if entry.get('file') == EXPORT_FILE]
+    if not MANIFEST:
+        title = {
+            'f_00_front_matter.md': 'Dedication, Epigraph & Copyright',
+            'f_00_preface_clean.md': 'Before we begin',
+            'glossary.md': 'Glossary',
+        }.get(EXPORT_FILE, EXPORT_FILE.removesuffix('.md').replace('_', ' '))
+        MANIFEST = [{'file': EXPORT_FILE, 'title': EXPORT_TITLE or title, 'anchor': 'a-export'}]
+    elif EXPORT_TITLE:
+        MANIFEST = [{**MANIFEST[0], 'title': EXPORT_TITLE}]
+else:
+    MANIFEST = [entry for entry in ALL_MANIFEST if entry.get('includeInFinal') is not False]
 
 def load(fp):
     p = D + fp
     if not os.path.exists(p): raise SystemExit('Missing: ' + p)
-    return open(p, encoding='utf-8').read()
+    return Path(p).read_text(encoding='utf-8')
 
 def toc_case(title):
     return title
@@ -152,10 +182,10 @@ def build_toc_html(page_map):
     for e in MANIFEST:
         # a-gloss has no printed page; a-refs (Online resources) is the single
         # QR page right after the preface and stays out of the Contents by design.
-        if e['anchor'] in ('a-gloss', 'a-refs'): continue
+        if not e.get('file') or e['anchor'] in ('a-gloss', 'a-refs') or e['file'] in PRELUDE_FILES: continue
         num = page_map.get(e['anchor'],'') if page_map else ''
-        rows.append('<div class="toc-row"><span class="toc-title">%s</span><span class="toc-dots"></span><span class="toc-num">%s</span></div>' % (toc_case(e['title']), num if num else ''))
-    return '<section class="chapter toc"><h1 class="chap nonum">Contents</h1><div class="toc-body">' + '\n'.join(rows) + '</div></section>'
+        rows.append('<a class="toc-row" href="#%s"><span class="toc-title">%s</span><span class="toc-dots"></span><span class="toc-num">%s</span></a>' % (escape(e['anchor'], quote=True), escape(toc_case(e['title'])), num if num else ''))
+    return '<section class="chapter toc" id="a-toc"><h1 class="chap nonum"><span class="page-marker">[[PG:a-toc]]</span>Contents</h1><div class="toc-body">' + '\n'.join(rows) + '</div></section>'
 
 def front_matter():
     t = strip_fm(load('f_00_front_matter.md'))
@@ -192,24 +222,31 @@ def front_matter():
     return ded, eq, esrc, cop_lines
 
 def menu_section(anchor):
-    url = 'https://choosingallah.com/resources'
-    qr_tag = '<img class="qr-img" src="qr_refs.png">'
-    try:
-        import urllib.request, base64
-        qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + url
-        with urllib.request.urlopen(qr_url, timeout=8) as r:
-            b64 = base64.b64encode(r.read()).decode()
-        qr_tag = '<img class="qr-img" src="data:image/png;base64,%s">' % b64
-    except Exception:
-        pass
+    # Generate locally: no third-party QR service and no stale fallback image
+    # that might encode a different destination from the clickable link.
+    import qrcode
+    from qrcode.image.svg import SvgPathFillImage
+    image = qrcode.make(RESOURCES_URL, image_factory=SvgPathFillImage, border=4)
+    stream = io.BytesIO()
+    image.save(stream)
+    b64 = base64.b64encode(stream.getvalue()).decode('ascii')
+    qr_tag = ('<a class="qr-link" href="%s" aria-label="Open online resources">'
+              '<img class="qr-img" src="data:image/svg+xml;base64,%s" alt="Online resources QR code"></a>') % (RESOURCES_URL, b64)
     # No text on this page by design. Everything it needs to say lives in the
     # preface. Just the heading with the QR code right below it, centered.
-    return ('<a id="%s"></a><section class="chapter">'
-            '<h1 class="chap nonum">Online resources</h1>'
+    return ('<section class="chapter" id="%s">'
+            '<h1 class="chap nonum"><span class="page-marker">[[PG:%s]]</span>Online resources</h1>'
             '%s'
-            '</section>') % (anchor, qr_tag)
+            '</section>') % (anchor, anchor, qr_tag)
+
+def font_url(filename):
+    return 'data:font/ttf;base64,' + base64.b64encode((ASSETS / 'fonts' / filename).read_bytes()).decode('ascii')
 
 CSS = (
+    '@font-face { font-family: Georgia; src: url("%s"); }\n' % font_url('georgia.ttf') +
+    '@font-face { font-family: Georgia; font-weight: bold; src: url("%s"); }\n' % font_url('georgiab.ttf') +
+    '@font-face { font-family: Georgia; font-style: italic; src: url("%s"); }\n' % font_url('georgiai.ttf') +
+    '@font-face { font-family: Georgia; font-style: italic; font-weight: bold; src: url("%s"); }\n' % font_url('georgiaz.ttf') +
     '@page { size: 5.5in 8.5in; margin: 0.8in 0.5in 0.85in 0.65in; }\n'
     '@page cover-page { size: 5.5in 8.5in; margin: 0; }\n'
     '.pg-cover { page: cover-page; width: 5.5in; height: 8.5in; page-break-after: always; overflow: hidden; display: block; }\n'
@@ -217,6 +254,7 @@ CSS = (
     'body { font-family: Georgia, "Liberation Serif", serif; font-size: 11pt; line-height: 1.52;'
     '       color: #111; margin: 0; padding: 0; text-align: justify; hyphens: auto; orphans: 2; widows: 2; }\n'
     'p { margin: 0 0 0.13in 0; text-indent: 0; }\n'
+    'a { color: inherit; text-decoration: none; }\n'
     # Front matter pages
     '.pg-half { display:flex; flex-direction:column; justify-content:center;'
     '           align-items:center; height:6.8in; page-break-after:always; text-align:center; }\n'
@@ -250,6 +288,7 @@ CSS = (
     '.eyebrow { text-align:center; font-size:9pt; letter-spacing:4px; text-transform:uppercase;'
     '            margin:0.3in 0 0.14in 0; color:#333; }\n'
     'h2 { font-size:11pt; font-weight:bold; margin:0.158in 0 0.09in 0; page-break-after:avoid; }\n'
+    'h3 { font-size:11pt; font-weight:normal; font-style:italic; margin:0.158in 0 0.09in 0; page-break-after:avoid; }\n'
     '.bq { font-style:italic; margin:0 0 0.13in 0; }\n'
     '.trans { font-style:italic; margin:0 0 0.13in 0; }\n'
     '.break { text-align:center; margin:0.02in 0 0.05in 0; }\n'
@@ -261,6 +300,7 @@ CSS = (
     # QR pages
     '.qr-note { font-size:10.5pt; line-height:1.55; margin:0 0 0.4in 0; }\n'
     '.qr-img { display:block; margin:0 auto 0.1in auto; width:1.7in; height:1.7in; }\n'
+    '.qr-link { display:block; width:1.7in; margin:0 auto; }\n'
     '.qr-url { font-size:8.5pt; text-align:center; font-family:Georgia,serif; color:#444; margin:0; }\n'
     # TOC
     '.toc h1.chap.nonum { margin:0.35in 0 0.3in 0; }\n'
@@ -273,9 +313,27 @@ CSS = (
 
 
 REFS_MAP = []
-if os.path.exists('./refs_map.json'):
-    with open('./refs_map.json') as _f:
+if (ASSETS / 'refs_map.json').exists():
+    with open(ASSETS / 'refs_map.json', encoding='utf-8') as _f:
         REFS_MAP = json.load(_f)
+
+LIVE_REFERENCES = None
+if os.path.exists('./references.json'):
+    with open('./references.json', encoding='utf-8') as _f:
+        LIVE_REFERENCES = json.load(_f)
+
+def reference_number(entry):
+    if LIVE_REFERENCES is None: return entry['n']
+    # Match a stable source label, not yesterday's numeric position. If the
+    # author renumbers/deletes a source, never silently cite a different work.
+    def normal(value):
+        return ' '.join(re.sub(r'[^\w]+', ' ', value.casefold()).split())
+    identity = normal(entry.get('reference', ''))
+    matches = [ref['n'] for ref in LIVE_REFERENCES if identity and identity in normal(ref['md'])]
+    if len(matches) != 1:
+        raise SystemExit('Reference mapping needs review for %s: %s. Check this source in Online resources before exporting.'
+                         % (entry['file'], entry.get('reference', entry['n'])))
+    return matches[0]
 
 def inject_refs(md, fname):
     """Insert [[FNn]] reference markers after the sentence containing each mapped needle."""
@@ -286,72 +344,116 @@ def inject_refs(md, fname):
     for e in entries:
         i = md.find(e['find'])
         if i < 0: continue
+        number = reference_number(e)
         m = re.compile(r'[.!?][\u201d\u2019\'")\]]*').search(md, i + len(e['find']) - 1)
         if not m: continue
         pos = m.end()
         # skip past any markers already inserted at this point
+        existing = []
         while True:
             fm = re.compile(r'\[\[FN\d+\]\]').match(md, pos)
-            if fm: pos = fm.end()
+            if fm:
+                existing.append(fm.group())
+                pos = fm.end()
             else: break
-        md = md[:pos] + ('[[FN%d]]' % e['n']) + md[pos:]
+        marker = '[[FN%d]]' % number
+        if marker not in existing:
+            md = md[:pos] + marker + md[pos:]
     return md
 
-def build_html(page_map=None):
-    # The single online-resources page sits right after the preface (not in
-    # the back matter), so readers meet it before the table of contents.
-    resources_html = menu_section('a-refs')
-    preface_html = parse(load('f_00_preface_clean.md'), 'Before we begin')
-    preface_html = preface_html.replace('<section class="chapter">', '<section class="chapter preface">', 1)
-    body = ''
-    for e in MANIFEST:
-        if e['anchor'] in ('a-refs','a-gloss'): continue
-        body += parse(inject_refs(load(e['file']), e['file']), e['title'], anchor_id=e['anchor'])
-    toc_html = build_toc_html(page_map or {})
+def front_matter_html():
     ded, eq, esrc, cop_lines = front_matter()
-    ded_lines = [l.strip() for l in ded.split('<br>') if l.strip()]
-    ded_html = ''.join('<p class="ded-line">%s</p>' % l for l in ded_lines)
-    # Cover page: full bleed, no margins, page 1 if a cover URL was synced.
-    cover_page = ''
-    for _cuf in (D + 'f_cover_url.md', D + '__cover_url.txt'):
-        if not os.path.exists(_cuf): continue
-        _raw = open(_cuf, encoding='utf-8').read().strip()
-        if not _raw: break
-        try:
-            import json as _json
-            cu = _json.loads(_raw).get('content', '') if _raw.startswith('{') else _raw
-        except Exception:
-            cu = _raw
-        if cu:
-            try:
-                import urllib.request, base64 as _b64
-                req = urllib.request.Request(cu, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=20) as resp:
-                    img_bytes = resp.read()
-                    ct = resp.headers.get_content_type() or 'image/jpeg'
-                b64str = _b64.b64encode(img_bytes).decode('ascii')
-                cover_page = ('<div class="pg-cover">'
-                              '<img src="data:%s;base64,%s" alt="Front cover">'
-                              '</div>') % (ct, b64str)
-            except Exception as _e:
-                print('Cover image download failed:', _e)
-        break
+    ded_lines = [line.strip() for line in ded.split('<br>') if line.strip()]
+    return (
+        '<div class="pg-copyright">' + ''.join('<p>%s</p>' % c for c in cop_lines) + '</div>'
+        + '<div class="pg-epigraph"><p class="epi-quote">%s</p><p class="epi-src">%s</p></div>' % (eq, esrc)
+        + '<div class="pg-dedication">' + ''.join('<p class="ded-line">%s</p>' % line for line in ded_lines) + '</div>'
+    )
 
-    h = '<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><style>' + CSS + '</style></head><body>'
-    h += cover_page
-    h += '<div class="pg-half"><p class="halftitle">Choosing Allah</p></div>'
-    h += '<div class="pg-title"><h1>Choosing<br>Allah</h1><p class="tp-author">Rayan Mokhtari</p></div>'
-    h += '<div class="pg-copyright">' + ''.join('<p>%s</p>' % c for c in cop_lines) + '</div>'
-    h += '<div class="pg-epigraph"><p class="epi-quote">%s</p><p class="epi-src">%s</p></div>' % (eq, esrc)
-    h += '<div class="pg-dedication">' + ded_html + '</div>'
-    # blank verso so the preface opens on a recto (p7), matching print convention
-    h += '<div style="height:6.8in; page-break-after:always;"></div>'
-    h += preface_html
-    # The online-resources page fills the verso after the preface (p8), so the
-    # Contents still opens on a recto (p9), matching print convention.
-    h += resources_html
-    h += toc_html + body + '</body></html>'
-    return h
+
+def cover_html():
+    # Cache within the private build folder so both pagination passes use the
+    # same image and only download it once.
+    cache = Path('cover.html')
+    if cache.exists(): return cache.read_text(encoding='utf-8')
+    url = ''
+    for filename in ('f_cover_url.md', '__cover_url.txt'):
+        path = Path(D) / filename
+        if path.exists():
+            raw = path.read_text(encoding='utf-8').strip()
+            url = json.loads(raw).get('content', '') if raw.startswith('{') else raw
+            break
+    if not url:
+        cache.write_text('', encoding='utf-8')
+        return ''
+    import urllib.request
+    from urllib.parse import urlsplit
+    import ipaddress, socket
+
+    def validate_url(value):
+        parsed = urlsplit(value)
+        if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError('The front cover needs a public HTTPS image URL')
+        addresses = socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
+        if not addresses or any(not ipaddress.ip_address(address[4][0]).is_global for address in addresses):
+            raise ValueError('Private network addresses cannot be used for a cover image')
+
+    class PublicRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            validate_url(newurl)
+            return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+    try:
+        validate_url(url)
+        request = urllib.request.Request(url, headers={'User-Agent': 'ChoosingAllah-PDF/2'})
+        with urllib.request.build_opener(PublicRedirect()).open(request, timeout=20) as response:
+            image_bytes = response.read(10_000_001)
+            content_type = response.headers.get_content_type()
+        if len(image_bytes) > 10_000_000 or not content_type.startswith('image/'):
+            raise ValueError('The cover must be an image smaller than 10 MB')
+        html = '<div class="pg-cover"><img src="data:%s;base64,%s" alt="Front cover"></div>' % (
+            escape(content_type, quote=True), base64.b64encode(image_bytes).decode('ascii'),
+        )
+    except Exception as exc:
+        # An uploaded cover is a deliberate choice; do not silently omit it.
+        raise SystemExit('The front cover could not be loaded. Check the uploaded cover and try again.') from exc
+    cache.write_text(html, encoding='utf-8')
+    return html
+
+
+def build_html(page_map=None):
+    head = '<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><style>' + CSS + '</style></head><body>'
+    if EXPORT_FILE and EXPORT_FILE != 'manifest.json':
+        if EXPORT_FILE == 'f_00_front_matter.md':
+            body = front_matter_html()
+        elif EXPORT_FILE == 'f_00_preface_clean.md':
+            body = parse(load(EXPORT_FILE), 'Before we begin', anchor_id='a-preface')
+            body = body.replace('class="chapter"', 'class="chapter preface"', 1)
+        elif EXPORT_FILE in RESOURCE_FILES:
+            body = menu_section('a-refs')
+        else:
+            entry = MANIFEST[0]
+            body = parse(inject_refs(load(EXPORT_FILE), EXPORT_FILE), entry['title'], anchor_id=entry['anchor'])
+        # No title pages, cover, preface, resources or Contents are added to a
+        # chapter export. The selected section starts on the very first page.
+        return head + body + '</body></html>'
+
+    preface_html = parse(load('f_00_preface_clean.md'), 'Before we begin', anchor_id='a-preface')
+    preface_html = preface_html.replace('class="chapter"', 'class="chapter preface"', 1)
+    body = ''
+    for entry in MANIFEST:
+        if not entry.get('file') or entry['anchor'] in ('a-refs', 'a-gloss') or entry['file'] in PRELUDE_FILES:
+            continue
+        body += parse(inject_refs(load(entry['file']), entry['file']), entry['title'], anchor_id=entry['anchor'])
+    html = head + cover_html()
+    html += '<div class="pg-half"><p class="halftitle">Choosing Allah</p></div>'
+    html += '<div class="pg-title"><h1>Choosing<br>Allah</h1><p class="tp-author">Rayan Mokhtari</p></div>'
+    html += front_matter_html()
+    html += '<div style="height:6.8in; page-break-after:always;"></div>'
+    html += preface_html
+    html += menu_section('a-refs')
+    html += build_toc_html(page_map or {}) + body + '</body></html>'
+    return html
 
 if __name__ == '__main__':
     page_map = None
