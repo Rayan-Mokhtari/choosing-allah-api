@@ -8,9 +8,10 @@
 # 3. GLOSSARY FOOTNOTES: superscript markers (6.5pt digits) are located per page and the
 #    matching 'term: definition' lines are stamped at the bottom of that page, above a rule.
 import fitz, json, sys
+from build_v11_server import ASSETS, MANIFEST as MAN, EXPORT_FILE, EXPORT_TITLE, PRELUDE_FILES, RESOURCE_FILES
 
-GEORGIA = './fonts/georgia.ttf'
-GEORGIA_I = './fonts/georgiai.ttf'
+GEORGIA = str(ASSETS / 'fonts/georgia.ttf')
+GEORGIA_I = str(ASSETS / 'fonts/georgiai.ttf')
 import os
 if not os.path.exists(GEORGIA_I): GEORGIA_I = GEORGIA
 
@@ -23,7 +24,6 @@ preface = pm.pop('_preface')
 openers = set(pm.values()) | {preface}
 
 # recto running heads carry the current chapter title; versos carry the book title
-MAN = json.load(open('./src16/manifest.json'))
 TITLES = {}
 for e in MAN:
     if e['anchor'] == 'a-refs':
@@ -79,7 +79,34 @@ for i in range(len(src)):
     pageno = i + 1
     p = out.new_page(width=W, height=H)
     dx = -SHIFT if pageno % 2 == 0 else 0.0
-    p.show_pdf_page(fitz.Rect(dx, 0, W + dx, H), src, i)
+    # A completely empty verso has no content stream to copy.
+    try:
+        p.show_pdf_page(fitz.Rect(dx, 0, W + dx, H), src, i)
+    except ValueError:
+        if src[i].get_text().strip() or src[i].get_images() or src[i].get_drawings():
+            raise
+
+# show_pdf_page copies the drawing, NOT link annotations. Recreate them only
+# after every destination page exists. Both the clickable rectangle and an
+# internal destination must follow the mirrored-margin shift.
+for i in range(len(src)):
+    dx = -SHIFT if (i + 1) % 2 == 0 else 0.0
+    page = out[i]
+    for original in src[i].get_links():
+        rectangle = fitz.Rect(original['from'])
+        rectangle.x0 += dx
+        rectangle.x1 += dx
+        rectangle &= page.rect
+        if rectangle.is_empty: continue
+        if original['kind'] == fitz.LINK_URI:
+            uri = original.get('uri', '')
+            if uri.startswith(('https://', 'http://', 'mailto:')):
+                page.insert_link({'kind': fitz.LINK_URI, 'from': rectangle, 'uri': uri})
+        elif original['kind'] == fitz.LINK_GOTO and 0 <= original.get('page', -1) < len(out):
+            target_page = original['page']
+            point = fitz.Point(original.get('to', (0, 0)))
+            if (target_page + 1) % 2 == 0: point.x = max(0, point.x - SHIFT)
+            page.insert_link({'kind': fitz.LINK_GOTO, 'from': rectangle, 'page': target_page, 'to': point})
 
 def block_left(pageno):
     return OUTER if pageno % 2 == 0 else GUTTER
@@ -155,5 +182,38 @@ for i in range(len(out)):
                          fontname='Georgia', color=(0.12, 0.12, 0.12))
         y += lead
 
+if EXPORT_FILE == 'manifest.json':
+    start = pm['_toc'] - 1
+    starts = [pm[entry['anchor']] for entry in MAN
+              if entry.get('file') and entry['anchor'] in pm
+              and entry['anchor'] not in ('a-refs', 'a-gloss') and entry['file'] not in PRELUDE_FILES]
+    end = min(starts) - 2 if starts else len(out) - 1
+    contents = fitz.open()
+    # Keep the full book's accurate printed numbers. Links to chapters that
+    # are not in this standalone Contents PDF must not point to random pages.
+    contents.insert_pdf(out, from_page=start, to_page=end, links=False)
+    out.close()
+    out = contents
+    bookmarks = [[1, 'Contents', 1]]
+elif EXPORT_FILE:
+    title = (
+        'Before we begin' if EXPORT_FILE == 'f_00_preface_clean.md'
+        else 'Online resources' if EXPORT_FILE in RESOURCE_FILES
+        else EXPORT_TITLE or MAN[0]['title']
+    )
+    bookmarks = [[1, title, 1]]
+else:
+    bookmarks = [[1, 'Before we begin', preface]]
+    if 'a-refs' in pm: bookmarks.append([1, 'Online resources', pm['a-refs']])
+    if '_toc' in pm: bookmarks.append([1, 'Contents', pm['_toc']])
+    bookmarks.extend([1, entry['title'], pm[entry['anchor']]] for entry in MAN
+                     if entry.get('file') and entry['anchor'] in pm
+                     and entry['anchor'] not in ('a-refs', 'a-gloss') and entry['file'] not in PRELUDE_FILES)
+    bookmarks.sort(key=lambda bookmark: bookmark[2])
+out.set_toc(bookmarks)
+out.set_metadata({'title': 'Choosing Allah' + (': ' + bookmarks[0][1] if EXPORT_FILE else ''),
+                  'author': 'Rayan Mokhtari', 'creator': 'Choosing Allah print service'})
 out.save('./interior.pdf', garbage=3, deflate=True)
 print('stamped ->', './interior.pdf', 'pages:', len(out), 'footnote pages:', len(page_fns))
+out.close()
+src.close()
