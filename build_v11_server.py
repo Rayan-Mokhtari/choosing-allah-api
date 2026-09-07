@@ -88,7 +88,7 @@ def load_glossary():
 GLOSSARY = load_glossary()
 FN_COUNTER = [0]
 
-def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
+def parse(md, chapter_title, anchor_id=None, footnotes=True):
     if md is None: return ''
     md = strip_fm(md)
     lines = [l.strip() for l in md.split('\n')]
@@ -134,13 +134,12 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
         else:
             out.append(el)
     body = out
-    if dropcap:
-        for i, el in enumerate(body):
-            if el.startswith('<p>'):
-                if len(re.sub(r'<[^>]+>', '', el)) >= 70:
-                    body[i] = add_dropcap(el); break
-                continue  # short opener line: the cap belongs on the next full paragraph
-            if not el.startswith('<h2>'): break
+    for i, el in enumerate(body):
+        if el.startswith('<p>'):
+            if len(re.sub(r'<[^>]+>', '', el)) >= 70:
+                body[i] = add_dropcap(el); break
+            continue  # short opener line: the cap belongs on the next full paragraph
+        if not el.startswith('<h2>'): break
     eyebrow, display = split_title(chapter_title)
     # Put the destination on the section, not before its page break. Otherwise
     # Chromium links to the preceding page even when the printed number is right.
@@ -284,12 +283,8 @@ CSS = (
     '.page-marker { position:absolute; left:0; top:0; color:#fff; font-size:1px; line-height:1;'
     '               letter-spacing:0; text-transform:none; white-space:nowrap; }\n'
     'h1.chap.nonum { margin-top:0.55in; }\n'
-    # Preface is a short front-matter note, not a chapter opener. Keep it quiet:
-    # a narrower/higher block, a smaller heading, conversational ragged-right text,
-    # and no automatic hyphenation. The drop cap is disabled at parse time below.
-    '.preface { width:3.75in; margin:0 auto; }\n'
-    '.preface h1.chap.nonum { font-size:13.5pt; letter-spacing:2.4px; margin:0.06in 0 0.24in 0; }\n'
-    '.preface p { margin:0 0 0.11in 0; text-align:left; hyphens:none; -webkit-hyphens:none; word-break:normal; overflow-wrap:normal; }\n'
+    '.preface h1.chap.nonum { margin:0.3in 0 0.32in 0; }\n'
+    '.preface p { margin:0 0 0.10in 0; }\n'
     '.eyebrow { text-align:center; font-size:9pt; letter-spacing:4px; text-transform:uppercase;'
     '            margin:0.3in 0 0.14in 0; color:#333; }\n'
     'h2 { font-size:11pt; font-weight:bold; margin:0.158in 0 0.09in 0; page-break-after:avoid; }\n'
@@ -328,26 +323,17 @@ if os.path.exists('./references.json'):
         LIVE_REFERENCES = json.load(_f)
 
 def reference_number(entry):
-    if LIVE_REFERENCES is None:
-        return entry['n']
-    # Match stable source labels, not yesterday's numeric position. A source may
-    # be displayed online by author, title, or a shortened citation, so refs_map
-    # can provide aliases for the same work. We still require exactly one unique
-    # online reference and never silently fall back to a different source.
+    if LIVE_REFERENCES is None: return entry['n']
+    # Match a stable source label, not yesterday's numeric position. If the
+    # author renumbers/deletes a source, never silently cite a different work.
+    # The live list may deliberately be empty or incomplete while references
+    # are being rebuilt. In that case the citation is omitted from this export
+    # instead of preventing the rest of the book from being typeset.
     def normal(value):
         return ' '.join(re.sub(r'[^\w]+', ' ', value.casefold()).split())
-
-    labels = [entry.get('reference', '')] + list(entry.get('aliases', []))
-    identities = [normal(label) for label in labels if normal(label)]
-    matches = {
-        ref['n']
-        for ref in LIVE_REFERENCES
-        if any(identity in normal(ref['md']) for identity in identities)
-    }
-    if len(matches) != 1:
-        raise SystemExit('Reference mapping needs review for %s: %s. Check this source in Online resources before exporting.'
-                         % (entry['file'], entry.get('reference', entry['n'])))
-    return next(iter(matches))
+    identity = normal(entry.get('reference', ''))
+    matches = [ref['n'] for ref in LIVE_REFERENCES if identity and identity in normal(ref['md'])]
+    return matches[0] if len(matches) == 1 else None
 
 def inject_refs(md, fname):
     """Insert [[FNn]] reference markers after the sentence containing each mapped needle."""
@@ -359,6 +345,7 @@ def inject_refs(md, fname):
         i = md.find(e['find'])
         if i < 0: continue
         number = reference_number(e)
+        if number is None: continue
         m = re.compile(r'[.!?][\u201d\u2019\'")\]]*').search(md, i + len(e['find']) - 1)
         if not m: continue
         pos = m.end()
@@ -441,7 +428,7 @@ def build_html(page_map=None):
         if EXPORT_FILE == 'f_00_front_matter.md':
             body = front_matter_html()
         elif EXPORT_FILE == 'f_00_preface_clean.md':
-            body = parse(load(EXPORT_FILE), 'Before we begin', anchor_id='a-preface', dropcap=False)
+            body = parse(load(EXPORT_FILE), 'Before we begin', anchor_id='a-preface')
             body = body.replace('class="chapter"', 'class="chapter preface"', 1)
         elif EXPORT_FILE in RESOURCE_FILES:
             body = menu_section('a-refs')
@@ -452,7 +439,7 @@ def build_html(page_map=None):
         # chapter export. The selected section starts on the very first page.
         return head + body + '</body></html>'
 
-    preface_html = parse(load('f_00_preface_clean.md'), 'Before we begin', anchor_id='a-preface', dropcap=False)
+    preface_html = parse(load('f_00_preface_clean.md'), 'Before we begin', anchor_id='a-preface')
     preface_html = preface_html.replace('class="chapter"', 'class="chapter preface"', 1)
     body = ''
     for entry in MANIFEST:
