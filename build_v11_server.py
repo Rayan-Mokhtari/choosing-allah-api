@@ -40,14 +40,18 @@ def absorb(s):
         s = re.sub(r'\\\[(.*?)\\\]', r'[\1]', s)
     return s
 
+def reference_html(number):
+    return '<sup class="fn"><a href="%s/references#ref-%s">[%s]</a></sup>' % (
+        RESOURCES_URL, number, number,
+    )
+
 def inline(s):
     s = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', s)
     s = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', s)
-    s = re.sub(r'\[\[FN(\d+)\]\]',
-               lambda m: '<sup class="fn"><a href="%s/references#ref-%s">%s</a></sup>'
-               % (RESOURCES_URL, m.group(1), m.group(1)), s)
-    # merge adjacent reference markers into one superscript: 20,21 (not 2021)
-    s = s.replace('</sup><sup class="fn">', ',')
+    # The living manuscript uses [^n]. Legacy refs_map injection still emits
+    # [[FNn]], so support both until the old map is retired.
+    s = re.sub(r'\[\^(\d+)\]', lambda m: reference_html(m.group(1)), s)
+    s = re.sub(r'\[\[FN(\d+)\]\]', lambda m: reference_html(m.group(1)), s)
     return s
 
 NUM_WORDS = {1:'ONE',2:'TWO',3:'THREE',4:'FOUR',5:'FIVE',6:'SIX',7:'SEVEN',8:'EIGHT',
