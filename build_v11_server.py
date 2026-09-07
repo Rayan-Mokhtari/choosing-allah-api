@@ -328,17 +328,26 @@ if os.path.exists('./references.json'):
         LIVE_REFERENCES = json.load(_f)
 
 def reference_number(entry):
-    if LIVE_REFERENCES is None: return entry['n']
-    # Match a stable source label, not yesterday's numeric position. If the
-    # author renumbers/deletes a source, never silently cite a different work.
+    if LIVE_REFERENCES is None:
+        return entry['n']
+    # Match stable source labels, not yesterday's numeric position. A source may
+    # be displayed online by author, title, or a shortened citation, so refs_map
+    # can provide aliases for the same work. We still require exactly one unique
+    # online reference and never silently fall back to a different source.
     def normal(value):
         return ' '.join(re.sub(r'[^\w]+', ' ', value.casefold()).split())
-    identity = normal(entry.get('reference', ''))
-    matches = [ref['n'] for ref in LIVE_REFERENCES if identity and identity in normal(ref['md'])]
+
+    labels = [entry.get('reference', '')] + list(entry.get('aliases', []))
+    identities = [normal(label) for label in labels if normal(label)]
+    matches = {
+        ref['n']
+        for ref in LIVE_REFERENCES
+        if any(identity in normal(ref['md']) for identity in identities)
+    }
     if len(matches) != 1:
         raise SystemExit('Reference mapping needs review for %s: %s. Check this source in Online resources before exporting.'
                          % (entry['file'], entry.get('reference', entry['n'])))
-    return matches[0]
+    return next(iter(matches))
 
 def inject_refs(md, fname):
     """Insert [[FNn]] reference markers after the sentence containing each mapped needle."""
