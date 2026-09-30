@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.background import BackgroundTask
+from poem_format import POEM_FORMAT_VERSION
 
 BASE = Path(__file__).resolve().parent
 # Optional persistent disk. Existing files are never replaced by repo copies.
@@ -182,7 +183,8 @@ def health():
     return {
         "status": "ok" if API_TOKEN else "configuration_required",
         "api_version": 2,
-        "features": ["isolated-builds", "chapter-exports", "private-manuscripts", "clickable-links"],
+        "poem_format_version": POEM_FORMAT_VERSION,
+        "features": ["isolated-builds", "chapter-exports", "private-manuscripts", "clickable-links", "poem-format"],
     }
 
 

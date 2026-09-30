@@ -2,7 +2,8 @@
   {
     "file": "f_00_intro.md",
     "title": "Introduction",
-    "anchor": "a-intro"
+    "anchor": "a-intro",
+    "bookManifestVersion": 3
   },
   {
     "file": "f_01.md",
@@ -61,33 +62,39 @@
     "anchor": "a-11"
   },
   {
+    "file": "f_12_prayer.md",
+    "title": "12. Why should I pray?",
+    "anchor": "a-prayer",
+    "includeInFinal": false
+  },
+  {
     "file": "f_10.md",
-    "title": "12. Being Muslim in your own skin",
+    "title": "13. Being Muslim in your own skin",
     "anchor": "a-12"
   },
   {
     "file": "f_12.md",
-    "title": "13. Why does Allah let bad things happen?",
+    "title": "14. Why does Allah let bad things happen?",
     "anchor": "a-13"
   },
   {
     "file": "f_13.md",
-    "title": "14. What happens after you die?",
+    "title": "15. What happens after you die?",
     "anchor": "a-14"
   },
   {
     "file": "f_15.md",
-    "title": "15. How to properly seek knowledge",
+    "title": "16. How to properly seek knowledge",
     "anchor": "a-15"
   },
   {
     "file": "f_14.md",
-    "title": "16. How to return to Allah",
+    "title": "17. How to return to Allah",
     "anchor": "a-16"
   },
   {
     "file": "f_16.md",
-    "title": "17. How to believe what you already know",
+    "title": "18. How to believe what you already know",
     "anchor": "a-17"
   },
   {

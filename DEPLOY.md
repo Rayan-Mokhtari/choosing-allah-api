@@ -94,3 +94,13 @@ The frontend patch touches only:
 - src/routes/admin.tsx: preview the current editor text, reflect newly saved API chapters, and show useful save errors.
 
 Treat the supplied frontend diff as the change specification and merge it into the latest files. Keep all newer page copy, routing, mobile fixes, live margin notes, admin controls and release/publishing decisions. Do not add unrelated redesigns, offline/Safari/visual QA work, emails, migrations or new project files.
+
+## Planned prayer chapter and verse layout
+
+The current spine has 18 numbered chapters. `f_12_prayer.md` follows `f_09.md` (Who gets the final word?). Existing filenames and anchors retain their identities. The prayer chapter is a planned placeholder with `includeInFinal: false`. Existing chapter prose is unchanged.
+
+The frontend migrates version 2 editor manifests to version 3 while preserving editor additions, removals, custom titles and inclusion choices. Persistent API disk files still seed only when missing. Do not replace live manuscript bodies with repository snapshots.
+
+A chapter opts into verse layout with leading YAML front matter containing `format: poem`. Blank lines separate stanzas; single line breaks and indentation remain within each stanza. Inline emphasis and existing numeric reference markers are supported. Prose keeps its existing layout. The production trim remains 5.5 by 8.5 inches, Georgia 11 points, line height 1.52.
+
+After this update deploys, `/health` reports `poem_format_version: 1` and the `poem-format` feature. This confirms the deployed format module is loaded. Measure any new poem's actual PDF length and review every page before preparing a reader release. This code update does not replace chapter 2, publish a beta draft or send reader email.
