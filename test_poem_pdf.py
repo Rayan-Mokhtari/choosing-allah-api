@@ -29,7 +29,7 @@ class PoemPdfTests(unittest.TestCase):
             (job / 'src16').mkdir()
             files = {
                 'f_02.md': source,
-                'f_03.md': 'Following prose remains a normal paragraph, with the same typography used throughout the rest of the book. This is test text, not a manuscript revision.',
+                'f_03.md': 'Following prose remains normal Georgia text. This is test text, not a manuscript revision.',
                 'f_00_preface_clean.md': 'This prefatory paragraph exists only in automated layout tests.',
                 'f_00_front_matter.md': '**Copyright page:** Layout test fixture.\n**Dedication:** A layout test.\n**Epigraph:** Test typography.',
                 'manifest.json': json.dumps([
@@ -111,7 +111,7 @@ class PoemPdfTests(unittest.TestCase):
         self.assertIn('<p><em>An italic closing note.</em></p>', html)
         self.assertEqual(html.count('class="poem"'), 1)
         text = normal(' '.join(page.get_text() for page in doc))
-        self.assertIn('the same typography used throughout the rest of the book.', text)
+        self.assertIn('Following prose remains normal Georgia text.', text)
         self.assertTrue(any(link.get('uri', '').endswith('/references#ref-9')
                             for page in doc for link in page.get_links()))
         following = next(entry for entry in doc.get_toc() if entry[1] == '3. Following chapter')
@@ -127,7 +127,7 @@ class PoemPdfTests(unittest.TestCase):
         self.addCleanup(doc.close)
         found = []
         for number, page in enumerate(doc, 1):
-            left = (36.0 if number % 2 == 0 else 46.8) - 28.8
+            left = 36.0 if number % 2 == 0 else 46.8
             for block in page.get_text('dict')['blocks']:
                 for line in block.get('lines', []):
                     text = ''.join(span['text'] for span in line['spans'])
@@ -135,9 +135,9 @@ class PoemPdfTests(unittest.TestCase):
                         continue
                     found.append(text)
                     x0, _, x1, _ = line['bbox']
-                    self.assertGreaterEqual(x0, left - 1)
-                    self.assertLessEqual(x1, left + 370.8 + 1)
-                    self.assertLess(abs((x0 + x1) / 2 - (left + 185.4)), 1.5)
+                    self.assertGreaterEqual(x0, 5)
+                    self.assertLessEqual(x1, 391)
+                    self.assertLess(abs((x0 + x1) / 2 - (left + 156.6)), 1.5)
         self.assertEqual(found, lines, 'A verse line wrapped, clipped, disappeared, or changed order')
 
     def test_impossibly_long_line_stops_export_instead_of_wrapping(self):

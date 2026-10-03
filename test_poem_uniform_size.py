@@ -26,8 +26,8 @@ class UniformPoemSizeTests(unittest.TestCase):
                     for span in line['spans']:
                         self.assertAlmostEqual(span['size'], 11, delta=.02)
                         self.assertIn('Georgia', span['font'])
-                    self.assertGreater(line['bbox'][0], 3)
-                    self.assertLess(line['bbox'][2], 393)
+                    self.assertGreater(line['bbox'][0], 5)
+                    self.assertLess(line['bbox'][2], 391)
         self.assertEqual(found, lines)
 
     def test_prose_and_poem_share_normal_georgia_at_eleven_points(self):
