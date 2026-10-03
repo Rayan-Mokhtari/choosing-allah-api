@@ -59,7 +59,7 @@ function preparePoemLayout() {
     const encoded = fs.readFileSync(fontPath).toString('base64');
     const face = '<style>@font-face { font-family: "Poem Serif"; ' +
       'src: url("data:font/ttf;base64,' + encoded + '") format("truetype"); ' +
-      'font-weight: 100 900; font-style: normal; }</style>';
+      'font-weight: 400; font-style: normal; }</style>';
     if (!html.includes('</head>')) throw new Error('The typeset document has no HTML head.');
     printInput = path.join(base, 'interior.print.html');
     fs.writeFileSync(printInput, html.replace('</head>', face + '</head>'), 'utf8');

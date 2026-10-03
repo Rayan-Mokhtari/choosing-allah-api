@@ -7,6 +7,7 @@ on:
       - '.github/workflows/poem-layout.yml'
       - 'poem_format.py'
       - 'prepare_poem_fonts.py'
+      - 'requirements.txt'
       - 'Dockerfile'
       - 'build_v11_server.py'
       - 'render.js'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'poem_format.py'
       - 'prepare_poem_fonts.py'
+      - 'requirements.txt'
       - 'Dockerfile'
       - 'build_v11_server.py'
       - 'render.js'
@@ -42,7 +44,7 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
-          python3 -m pip install PyMuPDF qrcode
+          python3 -m pip install PyMuPDF qrcode fonttools==4.66.1
           python3 prepare_poem_fonts.py
       - name: Test chapter and full-book PDF pipelines and uniform point size
         env:
