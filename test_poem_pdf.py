@@ -76,7 +76,7 @@ class PoemPdfTests(unittest.TestCase):
         centres = []
         for number, page in enumerate(doc, 1):
             self.assertEqual(tuple(page.rect)[2:], (396.0, 612.0))
-            expected_centre = 198.0
+            expected_centre = (36.0 if number % 2 == 0 else 46.8) + 156.6
             for block in page.get_text('dict')['blocks']:
                 for line in block.get('lines', []):
                     text = ''.join(span['text'] for span in line['spans'])
@@ -137,7 +137,7 @@ class PoemPdfTests(unittest.TestCase):
                     x0, _, x1, _ = line['bbox']
                     self.assertGreaterEqual(x0, 5)
                     self.assertLessEqual(x1, 391)
-                    self.assertLess(abs((x0 + x1) / 2 - 198.0), 1.5)
+                    self.assertLess(abs((x0 + x1) / 2 - (left + 156.6)), 1.5)
         self.assertEqual(found, lines, 'A verse line wrapped, clipped, disappeared, or changed order')
 
     def test_impossibly_long_line_stops_export_instead_of_wrapping(self):

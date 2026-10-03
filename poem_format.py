@@ -14,7 +14,7 @@ _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
 
 POEM_CSS = r'''
-@page poem-page { size: 5.5in 8.5in; margin: 0.8in 0.18in 0.85in 0.18in; }
+@page poem-page { size: 5.5in 8.5in; margin: 0.8in 0.05in 0.85in 0.20in; }
 .poem {
   page: poem-page;
   /* Match the book: Georgia at a fixed 11pt on every authored verse line. */
