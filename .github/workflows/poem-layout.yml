@@ -1,0 +1,52 @@
+name: Poem layout regression tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/poem-layout.yml'
+      - 'poem_format.py'
+      - 'build_v11_server.py'
+      - 'render.js'
+      - 'test*.py'
+  pull_request:
+    paths:
+      - 'poem_format.py'
+      - 'build_v11_server.py'
+      - 'render.js'
+      - 'test*.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test stanza parsing and prose compatibility
+        run: python3 -m unittest -v test_poem_format test_typesetter_parse
+      - name: Check renderer syntax
+        run: |
+          node --check render.js
+          python3 -m py_compile poem_format.py build_v11_server.py
+      - name: Retain the tested typesetter for reproducible visual proofs
+        uses: actions/upload-artifact@v4
+        with:
+          name: tested-typesetter
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            poem_format.py
+            build_v11_server.py
+            render.js
+            test_poem_format.py
+            test_typesetter_parse.py
+            stamp_v11_server.py
+            find_pages_v11_server.py
+            package.json
+            fonts/
