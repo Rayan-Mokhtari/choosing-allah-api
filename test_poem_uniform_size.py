@@ -26,8 +26,8 @@ class UniformPoemSizeTests(unittest.TestCase):
                     for span in line['spans']:
                         self.assertAlmostEqual(span['size'], 11, delta=.02)
                         self.assertIn('Georgia', span['font'])
-                    self.assertGreater(line['bbox'][0], 30)
-                    self.assertLess(line['bbox'][2], 366)
+                    self.assertGreater(line['bbox'][0], 3)
+                    self.assertLess(line['bbox'][2], 393)
         self.assertEqual(found, lines)
 
     def test_prose_and_poem_share_normal_georgia_at_eleven_points(self):
@@ -49,8 +49,20 @@ class UniformPoemSizeTests(unittest.TestCase):
             for span in spans:
                 self.assertAlmostEqual(span['size'], 11, delta=.02)
 
-    def test_overlong_georgia_line_is_not_condensed_or_shrunk(self):
-        source = ':::poem\nA quiet evening settles over the rooftops while the last of the daylight fades behind the hills.\n:::'
+    def test_quran_quote_may_wrap_but_keeps_georgia_eleven_points(self):
+        quote = '“Our Lord is the One Who has given everything its distinctive form, then guided it.” (20:50, excerpt)'
+        doc, _ = pipeline.PoemPdfTests.render(self, ':::poem\n' + quote + '\n:::')
+        self.addCleanup(doc.close)
+        spans = [span for page in doc for block in page.get_text('dict')['blocks']
+                 for line in block.get('lines', []) for span in line['spans']
+                 if 'Our Lord' in span['text'] or 'guided' in span['text']]
+        self.assertTrue(spans)
+        for span in spans:
+            self.assertAlmostEqual(span['size'], 11, delta=.02)
+            self.assertIn('Georgia', span['font'])
+
+    def test_overlong_non_quran_line_is_not_condensed_or_shrunk(self):
+        source = ':::poem\n' + ('Ordinary authored verse remains deliberately too wide for the page. ' * 8) + '\n:::'
         with self.assertRaisesRegex(AssertionError, r'fixed Georgia 11pt'):
             pipeline.PoemPdfTests.render(self, source)
 

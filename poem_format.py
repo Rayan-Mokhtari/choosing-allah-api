@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 5
+POEM_FORMAT_VERSION = 6
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -18,7 +18,7 @@ POEM_CSS = r'''
   /* Match the book: Georgia at a fixed 11pt on every authored verse line. */
   font-family: Georgia, "Liberation Serif", serif; font-size: 11pt; font-weight: 400;
   font-kerning: normal; letter-spacing: normal; word-spacing: normal;
-  width: 4.35in; max-width: 100%; margin: .26in auto .22in;
+  width: 5.15in; max-width: none; margin: .26in 0 .22in calc((100% - 5.15in) / 2);
   line-height: 1.34;
   text-align: center; text-indent: 0;
   hyphens: none; -webkit-hyphens: none;
@@ -37,6 +37,11 @@ POEM_CSS = r'''
   font-size: inherit; line-height: inherit;
   break-inside: avoid; page-break-inside: avoid;
   orphans: 2; widows: 2;
+}
+.poem .poem-line--quran {
+  width: 4.55in; max-width: 88%; margin: .03in auto;
+  white-space: normal; text-wrap: balance; overflow-wrap: normal;
+  line-height: 1.34;
 }
 .poem-bookend { break-inside: avoid; page-break-inside: avoid; }
 .poem-ornament {
@@ -167,8 +172,10 @@ def poem_body_html(body, inline):
         return re.sub(r'_([^_\n]+)_', r'<em>\1</em>', inline(escape(line, quote=True)))
 
     rendered = []
+    quran_citation = re.compile(r'\(\s*\d{1,3}:\d{1,3}(?:\s*[,\)])')
     for stanza in stanzas:
-        lines = ''.join('<span class="poem-line">%s</span>' % format_line(line)
+        lines = ''.join('<span class="poem-line%s">%s</span>' %
+                        (' poem-line--quran' if quran_citation.search(line) else '', format_line(line))
                         for line in stanza.split('\n'))
         rendered.append('<p class="poem-stanza">%s</p>' % lines)
     credit_html = '<p class="poem-credit">%s</p>' % format_line(credit) if credit else ''

@@ -20,11 +20,11 @@ function preparePoemLayout() {
       }
       const range = document.createRange();
       range.selectNodeContents(line);
-      // Retain the original margins and a little overhang/rounding clearance.
-      if (range.getBoundingClientRect().width > available - 1.5) {
+      if (!line.classList.contains('poem-line--quran') &&
+          range.getBoundingClientRect().width > available - 1.5) {
         throw new Error(`Poem line ${index + 1} is too long to fit on one line at ` +
-          'the fixed Georgia 11pt size. The line was not shrunk, wrapped or clipped. ' +
-          'Shorten that line in the editor or choose a wider print layout.');
+          'the fixed Georgia 11pt size even in the widened poem measure. The line was ' +
+          'not shrunk, wrapped or clipped. Shorten that authored line.');
       }
       line.dataset.poemFont = '11';
     }
@@ -34,7 +34,7 @@ function preparePoemLayout() {
     for (const bookend of poem.querySelectorAll('.poem-bookend')) {
       bookend.classList.toggle('poem-bookend--long', bookend.getBoundingClientRect().height > pageHeight - 1);
     }
-    poem.dataset.poemLayout = '5';
+    poem.dataset.poemLayout = '6';
     poem.dataset.poemFont = '11';
   }
 }
