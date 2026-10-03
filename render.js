@@ -4,73 +4,37 @@ const path = require('path');
 const fs = require('fs');
 const { pathToFileURL, fileURLToPath } = require('url');
 
-// Runs through Playwright, not manuscript scripts. Measure the actual embedded
-// font at the book's fixed text measure, after fonts load, on both PDF passes.
+// One fixed point size and one type design across the entire poem. Measure only:
+// never change a line's font size, tracking, horizontal scale or authored words.
 function preparePoemLayout() {
-  const pageHeight = 6.85 * 96; // 8.5in minus the existing .8in/.85in margins.
-  const maxFont = 11;
-  const minCommonFont = 9.5;
-  const minLineFont = 7;
-  const roundDown = (size) => Math.floor((size + 1e-8) * 20) / 20;
-  const textWidth = (line) => {
-    const range = document.createRange();
-    range.selectNodeContents(line);
-    return range.getBoundingClientRect().width;
-  };
-
+  const pageHeight = 6.85 * 96;
+  const expectedPixels = 11 * 96 / 72;
   for (const poem of document.querySelectorAll('.poem')) {
     const lines = Array.from(poem.querySelectorAll('.poem-line'));
-    if (!lines.length) continue;
-    // Reset before measuring, so repeated preparation is deterministic.
-    poem.style.setProperty('--poem-font-size', `${maxFont}pt`);
-    for (const line of lines) line.style.removeProperty('--poem-line-font-size');
     const available = poem.getBoundingClientRect().width;
     if (!(available > 0)) throw new Error('The poem has no printable text width.');
-    const safeWidth = available * .985; // Reserve room for glyph overhang/rounding.
-    const widest = lines.reduce((width, line) => Math.max(width, textWidth(line)), 0);
-    const fitted = widest > 0 ? maxFont * safeWidth / widest : maxFont;
-    // Use one common size wherever possible. A single exceptionally long line
-    // must not force every other line down to small print. Only those outliers
-    // get a smaller actual font, with the SAME baseline rhythm and no distortion.
-    const commonSize = Math.max(minCommonFont, roundDown(Math.min(maxFont, fitted)));
-    poem.style.setProperty('--poem-font-size', `${commonSize}pt`);
-    let smallestSize = commonSize;
     for (const [index, line] of lines.entries()) {
-      let size = commonSize;
-      const width = textWidth(line);
-      if (width > safeWidth) {
-        size = roundDown(commonSize * safeWidth / width);
-        // Re-measure the real styled text: references can have a fixed font size
-        // and do not necessarily shrink proportionally with the surrounding verse.
-        while (size >= minLineFont) {
-          line.style.setProperty('--poem-line-font-size', `${size}pt`);
-          if (textWidth(line) <= safeWidth) break;
-          size = roundDown(size - .05);
-        }
-        if (size < minLineFont) {
-          throw new Error(`Poem line ${index + 1} is too long to fit on one line at ` +
-            `${minLineFont}pt in this book size. Use a wider print layout or shorten ` +
-            'that authored line. No wrapped or clipped PDF was exported.');
-        }
+      const style = getComputedStyle(line);
+      if (Math.abs(parseFloat(style.fontSize) - expectedPixels) > .01) {
+        throw new Error(`Poem line ${index + 1} does not use the fixed 11pt type size.`);
       }
-      // Fail closed rather than quietly wrapping, clipping or losing any words.
-      if (textWidth(line) > available) {
-        throw new Error(`Poem line ${index + 1} exceeds its print margins.`);
+      const range = document.createRange();
+      range.selectNodeContents(line);
+      if (range.getBoundingClientRect().width > available * .985) {
+        throw new Error(`Poem line ${index + 1} is too long to fit on one line at ` +
+          'the fixed 11pt size. The line was not shrunk, wrapped or clipped. ' +
+          'Use a wider print layout for this manuscript.');
       }
-      line.dataset.poemFont = String(size);
-      smallestSize = Math.min(smallestSize, size);
+      line.dataset.poemFont = '11';
     }
-    // Stanzas taller than a page can flow; ordinary stanzas and bookends remain
-    // together. Authored lines cannot break horizontally or across two pages.
     for (const stanza of poem.querySelectorAll('.poem-stanza')) {
       stanza.classList.toggle('poem-stanza--long', stanza.getBoundingClientRect().height > pageHeight - 1);
     }
     for (const bookend of poem.querySelectorAll('.poem-bookend')) {
       bookend.classList.toggle('poem-bookend--long', bookend.getBoundingClientRect().height > pageHeight - 1);
     }
-    poem.dataset.poemLayout = '3';
-    poem.dataset.poemFont = String(commonSize);
-    poem.dataset.poemSmallestFont = String(smallestSize);
+    poem.dataset.poemLayout = '4';
+    poem.dataset.poemFont = '11';
   }
 }
 
@@ -110,6 +74,18 @@ function preparePoemLayout() {
     await page.goto(pathToFileURL(path.join(base, 'interior.html')).href, {
       waitUntil: 'networkidle', timeout: 180000,
     });
+    if (await page.locator('.poem').count()) {
+      const fontPath = path.join(assets, 'fonts', 'Imbue.ttf');
+      if (!fs.existsSync(fontPath)) {
+        throw new Error('The poem typeface is missing. Run python prepare_poem_fonts.py before printing.');
+      }
+      // Trusted renderer CSS, with no network request or manuscript script.
+      const encoded = fs.readFileSync(fontPath).toString('base64');
+      await page.addStyleTag({ content: '@font-face { font-family: "Poem Serif"; ' +
+        'src: url("data:font/ttf;base64,' + encoded + '") format("truetype"); ' +
+        'font-weight: 100 900; font-style: normal; }' });
+      await page.evaluate(() => document.fonts.load('11pt "Poem Serif"'));
+    }
     await page.evaluate(() => document.fonts.ready);
     const failedFonts = await page.evaluate(() =>
       Array.from(document.fonts).some((font) => font.status === 'error'));

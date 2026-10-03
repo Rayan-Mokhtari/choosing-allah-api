@@ -2,16 +2,20 @@ name: Poem layout regression tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, poem-uniform-11pt]
     paths:
       - '.github/workflows/poem-layout.yml'
       - 'poem_format.py'
+      - 'prepare_poem_fonts.py'
+      - 'Dockerfile'
       - 'build_v11_server.py'
       - 'render.js'
       - 'test*.py'
   pull_request:
     paths:
       - 'poem_format.py'
+      - 'prepare_poem_fonts.py'
+      - 'Dockerfile'
       - 'build_v11_server.py'
       - 'render.js'
       - 'test*.py'
@@ -33,16 +37,17 @@ jobs:
       - name: Check renderer syntax
         run: |
           node --check render.js
-          python3 -m py_compile poem_format.py build_v11_server.py test_poem_pdf.py
-      - name: Install PDF test dependencies
+          python3 -m py_compile poem_format.py prepare_poem_fonts.py build_v11_server.py test_poem_pdf.py test_poem_uniform_size.py
+      - name: Install PDF test dependencies and pinned poem typeface
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
           python3 -m pip install PyMuPDF qrcode
-      - name: Test chapter and full-book PDF pipelines
+          python3 prepare_poem_fonts.py
+      - name: Test chapter and full-book PDF pipelines and uniform point size
         env:
           BOOK_PDF_TESTS: '1'
-        run: python3 -m unittest -v test_poem_pdf
+        run: python3 -m unittest -v test_poem_pdf test_poem_uniform_size
       - name: Read public deployment health (informational)
         continue-on-error: true
         run: |
@@ -52,21 +57,22 @@ jobs:
               health = json.load(response)
           print(json.dumps({key: health.get(key) for key in ('status', 'api_version', 'poem_format_version')}))
           PY
-      - name: Retain the tested typesetter for reproducible visual proofs
+      - name: Retain tested source for reproducible proofs
         uses: actions/upload-artifact@v4
         with:
-          name: tested-typesetter
+          name: tested-typesetter-source
           retention-days: 1
           if-no-files-found: error
           path: |
             poem_format.py
+            prepare_poem_fonts.py
             build_v11_server.py
             render.js
             test_poem_format.py
             test_typesetter_parse.py
             test_poem_edge_cases.py
             test_poem_pdf.py
+            test_poem_uniform_size.py
             stamp_v11_server.py
             find_pages_v11_server.py
             package.json
-            fonts/

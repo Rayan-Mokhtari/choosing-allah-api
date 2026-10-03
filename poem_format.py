@@ -8,16 +8,19 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 3
+POEM_FORMAT_VERSION = 4
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
 
 POEM_CSS = r'''
 .poem {
-  --poem-font-size: 10.5pt;
-  width: 4.35in; max-width: 100%; margin: .26in auto .22in;
-  font-size: var(--poem-font-size); line-height: 1.34;
+  /* Naturally condensed Imbue, not squeezed Georgia. Fixed throughout. */
+  font-family: "Poem Serif", serif; font-size: 11pt; font-weight: 400;
+  font-optical-sizing: none; font-variation-settings: "opsz" 14;
+  font-kerning: normal; letter-spacing: normal; word-spacing: normal;
+  width: 4.5in; max-width: none; margin: .26in -.075in .22in;
+  line-height: 1.34;
   text-align: center; text-indent: 0;
   hyphens: none; -webkit-hyphens: none;
 }
@@ -30,11 +33,9 @@ POEM_CSS = r'''
 }
 .poem .poem-line {
   display: block; margin: 0; padding: 0; text-indent: 0;
-  /* An authored verse line must NEVER become two printed lines. */
   white-space: pre; text-align: center; text-wrap: nowrap;
   word-break: normal; overflow-wrap: normal;
-  font-size: var(--poem-line-font-size, var(--poem-font-size));
-  line-height: calc(var(--poem-font-size) * 1.34);
+  font-size: inherit; line-height: inherit;
   break-inside: avoid; page-break-inside: avoid;
   orphans: 2; widows: 2;
 }
@@ -51,6 +52,7 @@ POEM_CSS = r'''
   break-after: auto; page-break-after: auto;
 }
 .poem .poem-credit {
+  font-family: Georgia, serif; font-variation-settings: normal;
   font-size: 8.5pt; line-height: 1.4; font-style: italic;
   text-align: center; margin: .16in 0 0;
   hyphens: none; -webkit-hyphens: none;
