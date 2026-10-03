@@ -1,56 +1,48 @@
-name: Uniform poem type proof
+name: Verify poem printing deployment
 on:
   push:
     branches: [poem-uniform-type-proof]
     paths: ['.github/workflows/poem-uniform-type-proof.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  specimen:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v4
-        with: {persist-credentials: false}
-      - run: python3 -m pip install PyMuPDF fonttools
-      - name: Measure naturally narrower serif designs at eleven points
+      - name: Confirm the public print service advertises poem format four
         run: |
-          python3 - <<'PY'
-          import urllib.request, hashlib, json, string
+          python3 -u - <<'PY'
+          import json, time, urllib.request
+          from datetime import datetime, timezone
           from pathlib import Path
-          import pymupdf as fitz
-          from fontTools.ttLib import TTFont
-          from fontTools.varLib.instancer import instantiateVariableFont
-          out = Path('type-proof'); out.mkdir()
-          url = 'https://raw.githubusercontent.com/google/fonts/main/ofl/imbue/Imbue%5Bopsz,wght%5D.ttf'
-          with urllib.request.urlopen(url, timeout=30) as r: data = r.read()
-          path = out / 'Imbue.ttf'; path.write_bytes(data)
-          print('IMBUE_SOURCE_SHA256', hashlib.sha256(data).hexdigest())
-          variants=[]
-          for weight in [400,450,500]:
-            for opsz in [10,14,28]:
-              label=f'Imbue-{weight}-{opsz}'
-              target=out/(label+'.ttf')
-              font=instantiateVariableFont(TTFont(path), {'wght':weight,'opsz':opsz},inplace=True)
-              font.save(target);variants.append((label,target))
-          text = 'A quiet evening settles over the rooftops while the last of the daylight fades behind the hills.'
-          doc = fitz.open(); metrics=[]
-          for name,path in variants:
-            font=fitz.Font(fontfile=str(path))
-            page=doc.new_page(width=612,height=396)
-            page.insert_text((36,36),name,fontsize=12)
-            page.insert_font(fontname='specimen',fontfile=str(path))
-            for y,line in [(70,text),(96,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'),(116,'abcdefghijklmnopqrstuvwxyz'),(136,string.digits+string.punctuation),(156,'‘ ’ “ ” … — – ˹ ˺')]:
-              page.insert_text((36,y),line,fontsize=11,fontname='specimen')
-            metrics.append({'name':name,'width_pt':font.text_length(text,fontsize=11)})
-          doc.save(out/'serif-specimens.pdf',deflate=True)
-          (out/'measurements.json').write_text(json.dumps(metrics,indent=2))
-          print(json.dumps(metrics,indent=2))
+          url = 'https://choosing-allah-api.onrender.com/health'
+          result = {}
+          for attempt in range(10):
+              try:
+                  with urllib.request.urlopen(url, timeout=15) as response:
+                      health = json.load(response)
+                  result = {'checked_at': datetime.now(timezone.utc).isoformat(),
+                            'endpoint': url, 'response': health,
+                            'expected_poem_format_version': 4}
+                  Path('deployment-health.json').write_text(json.dumps(result, indent=2))
+                  print(json.dumps(result), flush=True)
+                  if health.get('status') == 'ok' and health.get('poem_format_version') == 4:
+                      print('Uniform 11pt poem renderer is live.', flush=True)
+                      break
+              except Exception as error:
+                  print(type(error).__name__ + ': ' + str(error), flush=True)
+              if attempt < 9:
+                  time.sleep(10)
+          else:
+              raise SystemExit('The new renderer was not confirmed live within this check.')
           PY
-      - uses: actions/upload-artifact@v4
+      - name: Retain the deployment verification result
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: uniform-size-specimens
+          name: poem-deployment-verification
           retention-days: 1
-          path: |
-            type-proof/serif-specimens.pdf
-            type-proof/measurements.json
+          path: deployment-health.json
+          if-no-files-found: error
