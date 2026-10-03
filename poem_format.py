@@ -19,7 +19,7 @@ POEM_CSS = r'''
   font-family: "Poem Serif", serif; font-size: 11pt; font-weight: 400;
   font-optical-sizing: none; font-variation-settings: "opsz" 14;
   font-kerning: normal; letter-spacing: normal; word-spacing: normal;
-  width: 4.5in; max-width: none; margin: .26in -.075in .22in;
+  width: 4.35in; max-width: 100%; margin: .26in auto .22in;
   line-height: 1.34;
   text-align: center; text-indent: 0;
   hyphens: none; -webkit-hyphens: none;
@@ -125,6 +125,8 @@ def manuscript_sections(source, infer_poem=False):
             raise ValueError('Close the :::poem block with a line containing ::: before printing.')
         if buffer:
             sections.append(('prose', '\n'.join(buffer)))
+        if verse:
+            raise ValueError('Close the :::poem block before printing.')
         return [(kind, text) for kind, text in sections if text.strip() or kind == 'poem']
     if re.search(r'^format\s*:\s*[\"\']?poem[\"\']?\s*$', front, re.I | re.M):
         return [('poem', body)]

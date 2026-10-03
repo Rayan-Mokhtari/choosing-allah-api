@@ -20,7 +20,8 @@ function preparePoemLayout() {
       }
       const range = document.createRange();
       range.selectNodeContents(line);
-      if (range.getBoundingClientRect().width > available * .985) {
+      // Retain the original margins and a little overhang/rounding clearance.
+      if (range.getBoundingClientRect().width > available - 1.5) {
         throw new Error(`Poem line ${index + 1} is too long to fit on one line at ` +
           'the fixed 11pt size. The line was not shrunk, wrapped or clipped. ' +
           'Use a wider print layout for this manuscript.');
