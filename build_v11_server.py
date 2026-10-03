@@ -93,13 +93,13 @@ def load_glossary():
 GLOSSARY = load_glossary()
 FN_COUNTER = [0]
 
-def prose_body_html(md, dropcap=True):
+def prose_body_html(md, dropcap=True, skip_subtitle=True):
     """The existing prose typesetter, also used around explicit poem blocks."""
     lines = [l.strip() for l in md.split('\n')]
     body = []
     idx = 0
     while idx < len(lines) and not lines[idx]: idx += 1
-    if idx < len(lines):
+    if skip_subtitle and idx < len(lines):
         l = lines[idx]
         if l.startswith('*') and l.endswith('*') and l.count('*') == 2: idx += 1
     in_ul = False
@@ -159,11 +159,12 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
     if not any(kind == 'poem' for kind, _ in sections):
         body = prose_body_html(strip_fm(md), dropcap=dropcap)
     else:
-        for kind, text in sections:
+        for section_index, (kind, text) in enumerate(sections):
             if kind == 'poem':
                 body.extend(poem_body_html(text, inline))
             else:
-                body.extend(prose_body_html(text, dropcap=dropcap and not body))
+                body.extend(prose_body_html(text, dropcap=dropcap and section_index == 0,
+                                            skip_subtitle=section_index == 0))
     eyebrow, display = split_title(chapter_title)
     # Put the destination on the section, not before its page break. Otherwise
     # Chromium links to the preceding page even when the printed number is right.

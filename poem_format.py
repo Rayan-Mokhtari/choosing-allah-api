@@ -11,7 +11,7 @@ from html import escape
 POEM_FORMAT_VERSION = 2
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
-_CREDIT = re.compile(r'^[*_]*(?:inspired by|after|by)\s+', re.I)
+_CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
 
 POEM_CSS = r'''
 .poem {
@@ -67,7 +67,7 @@ def _front(source):
 def is_poem(source):
     """Backward-compatible explicit poem check (not a prose-length heuristic)."""
     body, front = _front(source)
-    return bool(_FENCE.search(body) or re.search(
+    return bool(_FENCE.search(body.replace('\r\n', '\n')) or re.search(
         r'^format\s*:\s*[\"\']?poem[\"\']?\s*$', front, re.I | re.M))
 
 
@@ -120,7 +120,7 @@ def manuscript_sections(source, infer_poem=False):
             raise ValueError('Close the :::poem block with a line containing ::: before printing.')
         if buffer:
             sections.append(('prose', '\n'.join(buffer)))
-        return [(kind, text) for kind, text in sections if text.strip()]
+        return [(kind, text) for kind, text in sections if text.strip() or kind == 'poem']
     if re.search(r'^format\s*:\s*[\"\']?poem[\"\']?\s*$', front, re.I | re.M):
         return [('poem', body)]
     if infer_poem and not re.search(r'^format\s*:\s*[\"\']?prose[\"\']?\s*$', front, re.I | re.M):

@@ -23,17 +23,35 @@ permissions:
 jobs:
   parser-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Test stanza parsing and prose compatibility
-        run: python3 -m unittest -v test_poem_format test_typesetter_parse
+        run: python3 -m unittest -v test_poem_format test_typesetter_parse test_poem_edge_cases
       - name: Check renderer syntax
         run: |
           node --check render.js
-          python3 -m py_compile poem_format.py build_v11_server.py
+          python3 -m py_compile poem_format.py build_v11_server.py test_poem_pdf.py
+      - name: Install PDF test dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          python3 -m pip install PyMuPDF qrcode
+      - name: Test chapter and full-book PDF pipelines
+        env:
+          BOOK_PDF_TESTS: '1'
+        run: python3 -m unittest -v test_poem_pdf
+      - name: Read public deployment health (informational)
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request
+          with urllib.request.urlopen('https://choosing-allah-api.onrender.com/health', timeout=20) as response:
+              health = json.load(response)
+          print(json.dumps({key: health.get(key) for key in ('status', 'api_version', 'poem_format_version')}))
+          PY
       - name: Retain the tested typesetter for reproducible visual proofs
         uses: actions/upload-artifact@v4
         with:
@@ -46,6 +64,8 @@ jobs:
             render.js
             test_poem_format.py
             test_typesetter_parse.py
+            test_poem_edge_cases.py
+            test_poem_pdf.py
             stamp_v11_server.py
             find_pages_v11_server.py
             package.json
