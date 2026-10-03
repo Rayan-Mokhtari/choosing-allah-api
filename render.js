@@ -8,40 +8,69 @@ const { pathToFileURL, fileURLToPath } = require('url');
 // font at the book's fixed text measure, after fonts load, on both PDF passes.
 function preparePoemLayout() {
   const pageHeight = 6.85 * 96; // 8.5in minus the existing .8in/.85in margins.
+  const maxFont = 11;
+  const minCommonFont = 9.5;
+  const minLineFont = 7;
+  const roundDown = (size) => Math.floor((size + 1e-8) * 20) / 20;
+  const textWidth = (line) => {
+    const range = document.createRange();
+    range.selectNodeContents(line);
+    return range.getBoundingClientRect().width;
+  };
+
   for (const poem of document.querySelectorAll('.poem')) {
     const lines = Array.from(poem.querySelectorAll('.poem-line'));
     if (!lines.length) continue;
+    // Reset before measuring, so repeated preparation is deterministic.
+    poem.style.setProperty('--poem-font-size', `${maxFont}pt`);
+    for (const line of lines) line.style.removeProperty('--poem-line-font-size');
     const available = poem.getBoundingClientRect().width;
-    const base = parseFloat(getComputedStyle(poem).fontSize);
-    const probe = document.createElement('span');
-    Object.assign(probe.style, {
-      position: 'fixed', left: '-100000px', top: '0', visibility: 'hidden',
-      display: 'inline-block', width: 'max-content', maxWidth: 'none',
-      whiteSpace: 'pre', overflowWrap: 'normal', textWrap: 'nowrap',
-    });
-    probe.setAttribute('aria-hidden', 'true');
-    poem.appendChild(probe);
-    const widths = lines.map((line) => {
-      probe.replaceChildren(...Array.from(line.childNodes, (node) => node.cloneNode(true)));
-      return probe.getBoundingClientRect().width;
-    }).sort((a, b) => a - b);
-    probe.remove();
-    // One size for the whole poem, never a tiny size on an individual long line.
-    // Fit the 90th percentile; genuinely long lines get balanced continuations.
-    const target = widths[Math.min(widths.length - 1, Math.ceil(widths.length * .9) - 1)];
-    const points = target > 0 ? (base * .75 * available * .985 / target) : 11;
-    const size = Math.max(10.25, Math.min(11, Math.floor(points * 20) / 20));
-    poem.style.setProperty('--poem-font-size', `${size}pt`);
-    // A stanza taller than an entire page must be allowed to flow. Its authored
-    // lines still remain atomic; ordinary stanzas and bookends stay together.
+    if (!(available > 0)) throw new Error('The poem has no printable text width.');
+    const safeWidth = available * .985; // Reserve room for glyph overhang/rounding.
+    const widest = lines.reduce((width, line) => Math.max(width, textWidth(line)), 0);
+    const fitted = widest > 0 ? maxFont * safeWidth / widest : maxFont;
+    // Use one common size wherever possible. A single exceptionally long line
+    // must not force every other line down to small print. Only those outliers
+    // get a smaller actual font, with the SAME baseline rhythm and no distortion.
+    const commonSize = Math.max(minCommonFont, roundDown(Math.min(maxFont, fitted)));
+    poem.style.setProperty('--poem-font-size', `${commonSize}pt`);
+    let smallestSize = commonSize;
+    for (const [index, line] of lines.entries()) {
+      let size = commonSize;
+      const width = textWidth(line);
+      if (width > safeWidth) {
+        size = roundDown(commonSize * safeWidth / width);
+        // Re-measure the real styled text: references can have a fixed font size
+        // and do not necessarily shrink proportionally with the surrounding verse.
+        while (size >= minLineFont) {
+          line.style.setProperty('--poem-line-font-size', `${size}pt`);
+          if (textWidth(line) <= safeWidth) break;
+          size = roundDown(size - .05);
+        }
+        if (size < minLineFont) {
+          throw new Error(`Poem line ${index + 1} is too long to fit on one line at ` +
+            `${minLineFont}pt in this book size. Use a wider print layout or shorten ` +
+            'that authored line. No wrapped or clipped PDF was exported.');
+        }
+      }
+      // Fail closed rather than quietly wrapping, clipping or losing any words.
+      if (textWidth(line) > available) {
+        throw new Error(`Poem line ${index + 1} exceeds its print margins.`);
+      }
+      line.dataset.poemFont = String(size);
+      smallestSize = Math.min(smallestSize, size);
+    }
+    // Stanzas taller than a page can flow; ordinary stanzas and bookends remain
+    // together. Authored lines cannot break horizontally or across two pages.
     for (const stanza of poem.querySelectorAll('.poem-stanza')) {
       stanza.classList.toggle('poem-stanza--long', stanza.getBoundingClientRect().height > pageHeight - 1);
     }
     for (const bookend of poem.querySelectorAll('.poem-bookend')) {
       bookend.classList.toggle('poem-bookend--long', bookend.getBoundingClientRect().height > pageHeight - 1);
     }
-    poem.dataset.poemLayout = '2';
-    poem.dataset.poemFont = String(size);
+    poem.dataset.poemLayout = '3';
+    poem.dataset.poemFont = String(commonSize);
+    poem.dataset.poemSmallestFont = String(smallestSize);
   }
 }
 

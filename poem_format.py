@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 2
+POEM_FORMAT_VERSION = 3
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -30,8 +30,11 @@ POEM_CSS = r'''
 }
 .poem .poem-line {
   display: block; margin: 0; padding: 0; text-indent: 0;
-  white-space: pre-wrap; text-align: center; text-wrap: balance;
-  word-break: normal; overflow-wrap: anywhere;
+  /* An authored verse line must NEVER become two printed lines. */
+  white-space: pre; text-align: center; text-wrap: nowrap;
+  word-break: normal; overflow-wrap: normal;
+  font-size: var(--poem-line-font-size, var(--poem-font-size));
+  line-height: calc(var(--poem-font-size) * 1.34);
   break-inside: avoid; page-break-inside: avoid;
   orphans: 2; widows: 2;
 }

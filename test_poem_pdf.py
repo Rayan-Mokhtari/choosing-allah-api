@@ -117,6 +117,33 @@ class PoemPdfTests(unittest.TestCase):
         following = next(entry for entry in doc.get_toc() if entry[1] == '3. Following chapter')
         self.assertIn('FOLLOWINGCHAPTER', ''.join(doc[following[2] - 1].get_text().split()))
 
+    def test_every_authored_line_is_one_pdf_line_even_the_longest(self):
+        # Many short lines plus two long outliers defeat percentile-only fitting.
+        lines = [f'Short verse {i:02d} stays at the common size.' for i in range(30)]
+        lines.insert(9, 'This deliberately long verse line keeps all of its words together across the printed book page.')
+        lines.insert(21, 'Every word in this longer quoted verse must also remain together on one printed baseline.')
+        source = ':::poem\n' + '\n\n'.join('\n'.join(lines[i:i + 4]) for i in range(0, len(lines), 4)) + '\n:::'
+        doc, _ = self.render(source)
+        self.addCleanup(doc.close)
+        found = []
+        for number, page in enumerate(doc, 1):
+            left = 36.0 if number % 2 == 0 else 46.8
+            for block in page.get_text('dict')['blocks']:
+                for line in block.get('lines', []):
+                    text = ''.join(span['text'] for span in line['spans'])
+                    if text not in lines:
+                        continue
+                    found.append(text)
+                    x0, _, x1, _ = line['bbox']
+                    self.assertGreaterEqual(x0, left - 1)
+                    self.assertLessEqual(x1, left + 313.2 + 1)
+                    self.assertLess(abs((x0 + x1) / 2 - (left + 156.6)), 1.5)
+        self.assertEqual(found, lines, 'A verse line wrapped, clipped, disappeared, or changed order')
+
+    def test_impossibly_long_line_stops_export_instead_of_wrapping(self):
+        with self.assertRaisesRegex(AssertionError, r'Poem line 1 is too long to fit on one line'):
+            self.render(':::poem\n' + ('Unbroken words ' * 150) + '\n:::')
+
 
 if __name__ == '__main__':
     unittest.main()
