@@ -21,41 +21,29 @@ jobs:
           import pymupdf as fitz
           from fontTools.ttLib import TTFont
           from fontTools.varLib.instancer import instantiateVariableFont
-          base = 'https://raw.githubusercontent.com/google/fonts/main/ofl/'
           out = Path('type-proof'); out.mkdir()
-          files = {
-            'InstrumentSerif-Regular': 'instrumentserif/InstrumentSerif-Regular.ttf',
-            'InstrumentSerif-Italic': 'instrumentserif/InstrumentSerif-Italic.ttf',
-            'RobotoSerif': 'robotoserif/RobotoSerif%5BGRAD,opsz,wdth,wght%5D.ttf',
-          }
-          variants = [('Georgia', Path('fonts/georgia.ttf'))]
-          for name, remote in files.items():
-            path = out / (name + '.ttf')
-            with urllib.request.urlopen(base + remote, timeout=30) as r: path.write_bytes(r.read())
-            print('SOURCE', name, hashlib.sha256(path.read_bytes()).hexdigest())
-            if name == 'RobotoSerif':
-              for wdth in [50, 62.5, 75]:
-                for opsz in [11, 72]:
-                  label = f'RobotoSerif-{wdth}-{opsz}'
-                  target = out / (label + '.ttf')
-                  font = instantiateVariableFont(TTFont(path), {'wght':400,'wdth':wdth,'opsz':opsz,'GRAD':0}, inplace=True)
-                  font.save(target)
-                  variants.append((label, target))
-            else:
-              variants.append((name, path))
+          url = 'https://raw.githubusercontent.com/google/fonts/main/ofl/imbue/Imbue%5Bopsz,wght%5D.ttf'
+          with urllib.request.urlopen(url, timeout=30) as r: data = r.read()
+          path = out / 'Imbue.ttf'; path.write_bytes(data)
+          print('IMBUE_SOURCE_SHA256', hashlib.sha256(data).hexdigest())
+          variants=[]
+          for weight in [400,450,500]:
+            for opsz in [10,14,28]:
+              label=f'Imbue-{weight}-{opsz}'
+              target=out/(label+'.ttf')
+              font=instantiateVariableFont(TTFont(path), {'wght':weight,'opsz':opsz},inplace=True)
+              font.save(target);variants.append((label,target))
           text = 'A quiet evening settles over the rooftops while the last of the daylight fades behind the hills.'
-          doc = fitz.open()
-          metrics = []
-          for name, path in variants:
-            font = fitz.Font(fontfile=str(path))
-            page = doc.new_page(width=612, height=396)
-            page.insert_text((36,36), name, fontsize=12)
-            page.insert_font(fontname='specimen', fontfile=str(path))
-            for y, line in [(70,text),(96,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'),(116,'abcdefghijklmnopqrstuvwxyz'),(136,string.digits+string.punctuation),(156,'‘ ’ “ ” … — – ˹ ˺')]:
-              page.insert_text((36,y), line, fontsize=11, fontname='specimen')
-            width = font.text_length(text,fontsize=11)
-            metrics.append({'name':name,'width_pt':width})
-          doc.save(out/'serif-specimens.pdf', deflate=True)
+          doc = fitz.open(); metrics=[]
+          for name,path in variants:
+            font=fitz.Font(fontfile=str(path))
+            page=doc.new_page(width=612,height=396)
+            page.insert_text((36,36),name,fontsize=12)
+            page.insert_font(fontname='specimen',fontfile=str(path))
+            for y,line in [(70,text),(96,'ABCDEFGHIJKLMNOPQRSTUVWXYZ'),(116,'abcdefghijklmnopqrstuvwxyz'),(136,string.digits+string.punctuation),(156,'‘ ’ “ ” … — – ˹ ˺')]:
+              page.insert_text((36,y),line,fontsize=11,fontname='specimen')
+            metrics.append({'name':name,'width_pt':font.text_length(text,fontsize=11)})
+          doc.save(out/'serif-specimens.pdf',deflate=True)
           (out/'measurements.json').write_text(json.dumps(metrics,indent=2))
           print(json.dumps(metrics,indent=2))
           PY
