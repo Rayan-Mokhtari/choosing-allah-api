@@ -4,14 +4,14 @@ import re
 import unittest
 from html import escape
 from pathlib import Path
-from poem_format import is_poem, poem_body_html
+from poem_format import manuscript_sections, poem_body_html
 
 
 def load_parser():
     tree = ast.parse(Path(__file__).with_name('build_v11_server.py').read_text())
-    names = {'strip_fm', 'norm_quotes', 'absorb', 'reference_html', 'inline', 'split_title', 'add_dropcap', 'parse'}
+    names = {'strip_fm', 'norm_quotes', 'absorb', 'reference_html', 'inline', 'split_title', 'add_dropcap', 'prose_body_html', 'parse'}
     definitions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
-    scope = {'re': re, 'escape': escape, 'is_poem': is_poem, 'poem_body_html': poem_body_html,
+    scope = {'re': re, 'escape': escape, 'manuscript_sections': manuscript_sections, 'poem_body_html': poem_body_html,
              'NUM_WORDS': {2: 'TWO'}, 'RESOURCES_URL': 'https://choosingallah.com/resources'}
     exec(compile(ast.Module(body=definitions, type_ignores=[]), 'typesetter-parser', 'exec'), scope)
     return scope['parse']
@@ -20,8 +20,9 @@ def load_parser():
 class TypesetterParseTests(unittest.TestCase):
     def test_poem_is_explicit_safe_and_keeps_inline_references(self):
         html = load_parser()('---\nformat: poem\n---\nFirst\nSecond *word*\n\nA < B & C [^9]', '2. A question', 'a-2')
-        self.assertIn('First<br>Second <em>word</em>', html)
+        self.assertIn('<span class="poem-line">Second <em>word</em></span>', html)
         self.assertEqual(html.count('class="poem-stanza"'), 2)
+        self.assertEqual(html.count('class="poem-ornament'), 2)
         self.assertIn('A &lt; B &amp; C', html)
         self.assertIn('/resources/references#ref-9', html)
         self.assertNotIn('dropcap', html)
@@ -34,6 +35,24 @@ class TypesetterParseTests(unittest.TestCase):
         self.assertIn('<p>Another paragraph.</p>', html)
         self.assertNotIn('poem-stanza', html)
         self.assertNotIn('<br>', html)
+
+    def test_mixed_chapter_keeps_prose_and_native_or_legacy_references(self):
+        source = ('An introduction long enough to receive the same drop capital as in the original printed chapter.\n\n'
+                  ':::poem\nA verse with [^9].\nAnother with <sup>10</sup>.\n:::\n\nA prose ending.')
+        html = load_parser()(source, '2. A question', 'a-2')
+        self.assertEqual(html.count('class="dropcap"'), 1)
+        self.assertEqual(html.count('class="poem"'), 1)
+        self.assertIn('references#ref-9', html)
+        self.assertIn('references#ref-10', html)
+        self.assertIn('<p>A prose ending.</p>', html)
+        self.assertNotIn(':::poem', html)
+        self.assertNotIn('&lt;sup&gt;', html)
+
+    def test_legacy_inference_is_scoped_to_belief_chapter(self):
+        source = 'I have chosen to answer with a poem.\n\n' + '\n\n'.join('One\nTwo\nThree\nFour' for _ in range(5))
+        parse = load_parser()
+        self.assertIn('class="poem"', parse(source, '2. Why should you believe in Allah?'))
+        self.assertNotIn('class="poem"', parse(source, '3. Another chapter'))
 
 
 if __name__ == '__main__':

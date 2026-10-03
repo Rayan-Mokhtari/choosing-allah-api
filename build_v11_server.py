@@ -3,7 +3,7 @@
 import re, os, sys, json, base64, io
 from html import escape
 from pathlib import Path
-from poem_format import is_poem, poem_body_html
+from poem_format import manuscript_sections, poem_body_html, POEM_CSS
 
 ASSETS = Path(os.environ.get('BOOK_ASSET_DIR', Path(__file__).resolve().parent))
 os.chdir(os.environ.get('BOOK_BUILD_DIR', Path(__file__).resolve().parent))
@@ -93,63 +93,77 @@ def load_glossary():
 GLOSSARY = load_glossary()
 FN_COUNTER = [0]
 
+def prose_body_html(md, dropcap=True):
+    """The existing prose typesetter, also used around explicit poem blocks."""
+    lines = [l.strip() for l in md.split('\n')]
+    body = []
+    idx = 0
+    while idx < len(lines) and not lines[idx]: idx += 1
+    if idx < len(lines):
+        l = lines[idx]
+        if l.startswith('*') and l.endswith('*') and l.count('*') == 2: idx += 1
+    in_ul = False
+    for l in lines[idx:]:
+        if not l: continue
+        if l.startswith('<page') or l.startswith('<empty-block'): continue
+        raw = l
+        l = norm_quotes(absorb(l))
+        if re.match(r'^-{3,}$', raw):
+            body.append('<p class="break">*</p>'); continue
+        if raw.startswith('- '):
+            if not in_ul: body.append('<ul>'); in_ul = True
+            body.append('<li>%s</li>' % l[2:].strip()); continue
+        if in_ul: body.append('</ul>'); in_ul = False
+        if raw.startswith('### '):
+            body.append('<h3>%s</h3>' % l[4:].strip()); continue
+        if raw.startswith('## '):
+            body.append('<h2>%s</h2>' % l[3:].strip()); continue
+        if raw.startswith('> '):
+            body.append('<p class="bq">%s</p>' % l[2:].strip()); continue
+        # Verse detection sees through *emphasis* wrapping. Asterisks are only
+        # converted to <em> later (in inline()), so strip literal asterisks and
+        # any em tags here; the trans class then italicizes the whole paragraph,
+        # reference included, instead of leaving it half italic, half roman.
+        bare = re.sub(r'</?em>', '', l).replace('*', '')
+        if bare.startswith('\u201c') and ('Surah' in raw or 'surah' in raw or re.search(r'\b[Aa]yas? \d', raw)):
+            body.append('<p class="trans">%s</p>' % bare); continue
+        body.append('<p>%s</p>' % l)
+    if in_ul: body.append('</ul>')
+    while body and body[-1].startswith('<p class="break"'): body.pop()
+    out = []
+    for el in body:
+        m2 = re.match(r'^(<[^>]+>)(.*?)(</[a-z0-9]+>)$', el, re.S)
+        if m2:
+            out.append(m2.group(1) + inline(m2.group(2)) + m2.group(3))
+        else:
+            out.append(el)
+    body = out
+    if dropcap:
+        for i, el in enumerate(body):
+            if el.startswith('<p>'):
+                if len(re.sub(r'<[^>]+>', '', el)) >= 70:
+                    body[i] = add_dropcap(el); break
+                continue  # short opener line: the cap belongs on the next full paragraph
+            if not el.startswith('<h2>'): break
+    return body
+
+
 def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
     if md is None: return ''
-    poem = is_poem(md)
-    md = strip_fm(md)
-    if poem:
-        body = poem_body_html(md, inline)
+    # Existing Chapter Two revisions predate poem markers. Only this chapter
+    # may infer an announced, stanza-shaped verse section; other prose keeps
+    # its original layout unless the author explicitly opts into poem mode.
+    infer_poem = bool(re.search(r'\bwhy\b.*\bbelieve\b.*\ballah\b', chapter_title, re.I))
+    sections = manuscript_sections(md, infer_poem=infer_poem)
+    body = []
+    if not any(kind == 'poem' for kind, _ in sections):
+        body = prose_body_html(strip_fm(md), dropcap=dropcap)
     else:
-        lines = [l.strip() for l in md.split('\n')]
-        body = []
-        idx = 0
-        while idx < len(lines) and not lines[idx]: idx += 1
-        if idx < len(lines):
-            l = lines[idx]
-            if l.startswith('*') and l.endswith('*') and l.count('*') == 2: idx += 1
-        in_ul = False
-        for l in lines[idx:]:
-            if not l: continue
-            if l.startswith('<page') or l.startswith('<empty-block'): continue
-            raw = l
-            l = norm_quotes(absorb(l))
-            if re.match(r'^-{3,}$', raw):
-                body.append('<p class="break">*</p>'); continue
-            if raw.startswith('- '):
-                if not in_ul: body.append('<ul>'); in_ul = True
-                body.append('<li>%s</li>' % l[2:].strip()); continue
-            if in_ul: body.append('</ul>'); in_ul = False
-            if raw.startswith('### '):
-                body.append('<h3>%s</h3>' % l[4:].strip()); continue
-            if raw.startswith('## '):
-                body.append('<h2>%s</h2>' % l[3:].strip()); continue
-            if raw.startswith('> '):
-                body.append('<p class="bq">%s</p>' % l[2:].strip()); continue
-            # Verse detection sees through *emphasis* wrapping. Asterisks are only
-            # converted to <em> later (in inline()), so strip literal asterisks and
-            # any em tags here; the trans class then italicizes the whole paragraph,
-            # reference included, instead of leaving it half italic, half roman.
-            bare = re.sub(r'</?em>', '', l).replace('*', '')
-            if bare.startswith('\u201c') and ('Surah' in raw or 'surah' in raw or re.search(r'\b[Aa]yas? \d', raw)):
-                body.append('<p class="trans">%s</p>' % bare); continue
-            body.append('<p>%s</p>' % l)
-        if in_ul: body.append('</ul>')
-        while body and body[-1].startswith('<p class="break"'): body.pop()
-        out = []
-        for el in body:
-            m2 = re.match(r'^(<[^>]+>)(.*?)(</[a-z0-9]+>)$', el, re.S)
-            if m2:
-                out.append(m2.group(1) + inline(m2.group(2)) + m2.group(3))
+        for kind, text in sections:
+            if kind == 'poem':
+                body.extend(poem_body_html(text, inline))
             else:
-                out.append(el)
-        body = out
-        if dropcap:
-            for i, el in enumerate(body):
-                if el.startswith('<p>'):
-                    if len(re.sub(r'<[^>]+>', '', el)) >= 70:
-                        body[i] = add_dropcap(el); break
-                    continue  # short opener line: the cap belongs on the next full paragraph
-                if not el.startswith('<h2>'): break
+                body.extend(prose_body_html(text, dropcap=dropcap and not body))
     eyebrow, display = split_title(chapter_title)
     # Put the destination on the section, not before its page break. Otherwise
     # Chromium links to the preceding page even when the printed number is right.
@@ -298,7 +312,6 @@ CSS = (
     '            margin:0.3in 0 0.14in 0; color:#333; }\n'
     'h2 { font-size:11pt; font-weight:bold; margin:0.158in 0 0.09in 0; page-break-after:avoid; }\n'
     'h3 { font-size:11pt; font-weight:normal; font-style:italic; margin:0.158in 0 0.09in 0; page-break-after:avoid; }\n'
-    '.poem-stanza { text-align:left; hyphens:none; -webkit-hyphens:none; white-space:pre-wrap; break-inside:avoid; margin:0 0 0.16in 0; }\n'
     '.bq { font-style:italic; margin:0 0 0.13in 0; }\n'
     '.trans { font-style:italic; margin:0 0 0.13in 0; }\n'
     '.break { text-align:center; margin:0.02in 0 0.05in 0; }\n'
@@ -321,6 +334,8 @@ CSS = (
     '.toc-num { flex:0 0 auto; }\n'
 )
 
+
+CSS += POEM_CSS
 
 REFS_MAP = []
 if (ASSETS / 'refs_map.json').exists():
