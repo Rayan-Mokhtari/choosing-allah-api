@@ -23,8 +23,8 @@ function preparePoemLayout() {
       // Retain the original margins and a little overhang/rounding clearance.
       if (range.getBoundingClientRect().width > available - 1.5) {
         throw new Error(`Poem line ${index + 1} is too long to fit on one line at ` +
-          'the fixed 11pt size. The line was not shrunk, wrapped or clipped. ' +
-          'Use a wider print layout for this manuscript.');
+          'the fixed Georgia 11pt size. The line was not shrunk, wrapped or clipped. ' +
+          'Shorten that line in the editor or choose a wider print layout.');
       }
       line.dataset.poemFont = '11';
     }
@@ -34,7 +34,7 @@ function preparePoemLayout() {
     for (const bookend of poem.querySelectorAll('.poem-bookend')) {
       bookend.classList.toggle('poem-bookend--long', bookend.getBoundingClientRect().height > pageHeight - 1);
     }
-    poem.dataset.poemLayout = '4';
+    poem.dataset.poemLayout = '5';
     poem.dataset.poemFont = '11';
   }
 }
@@ -46,24 +46,7 @@ function preparePoemLayout() {
   }
   const base = path.resolve(process.env.BOOK_BUILD_DIR || __dirname);
   const assets = path.resolve(process.env.BOOK_ASSET_DIR || __dirname);
-  let printInput = path.join(base, 'interior.html');
-  const html = fs.readFileSync(printInput, 'utf8');
-  if (html.includes('<div class="poem">')) {
-    const fontPath = path.join(assets, 'fonts', 'Imbue.ttf');
-    if (!fs.existsSync(fontPath)) {
-      throw new Error('The poem typeface is missing. Run python prepare_poem_fonts.py before printing.');
-    }
-    // Fonts belong in the document before navigation. addStyleTag may wait
-    // indefinitely for a load event when document JavaScript is disabled.
-    // This is a generated build file, never a saved manuscript or source file.
-    const encoded = fs.readFileSync(fontPath).toString('base64');
-    const face = '<style>@font-face { font-family: "Poem Serif"; ' +
-      'src: url("data:font/ttf;base64,' + encoded + '") format("truetype"); ' +
-      'font-weight: 400; font-style: normal; }</style>';
-    if (!html.includes('</head>')) throw new Error('The typeset document has no HTML head.');
-    printInput = path.join(base, 'interior.print.html');
-    fs.writeFileSync(printInput, html.replace('</head>', face + '</head>'), 'utf8');
-  }
+  const printInput = path.join(base, 'interior.html');
   const browser = await chromium.launch({
     ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',

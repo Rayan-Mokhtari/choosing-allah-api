@@ -25,7 +25,6 @@ RUN npx playwright install chromium
 RUN npx playwright install-deps chromium
 
 COPY . .
-RUN python prepare_poem_fonts.py
 
 EXPOSE 8000
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]

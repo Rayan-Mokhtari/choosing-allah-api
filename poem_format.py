@@ -8,16 +8,15 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 4
+POEM_FORMAT_VERSION = 5
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
 
 POEM_CSS = r'''
 .poem {
-  /* Naturally condensed Imbue, not squeezed Georgia. Fixed throughout. */
-  font-family: "Poem Serif", serif; font-size: 11pt; font-weight: 400;
-  font-optical-sizing: none; font-variation-settings: "opsz" 14;
+  /* Match the book: Georgia at a fixed 11pt on every authored verse line. */
+  font-family: Georgia, "Liberation Serif", serif; font-size: 11pt; font-weight: 400;
   font-kerning: normal; letter-spacing: normal; word-spacing: normal;
   width: 4.35in; max-width: 100%; margin: .26in auto .22in;
   line-height: 1.34;

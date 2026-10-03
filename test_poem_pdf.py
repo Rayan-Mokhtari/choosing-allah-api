@@ -118,10 +118,10 @@ class PoemPdfTests(unittest.TestCase):
         self.assertIn('FOLLOWINGCHAPTER', ''.join(doc[following[2] - 1].get_text().split()))
 
     def test_every_authored_line_is_one_pdf_line_even_the_longest(self):
-        # Many short lines plus two long outliers defeat percentile-only fitting.
+        # Every line must fit in normal Georgia without any automatic resizing.
         lines = [f'Short verse {i:02d} stays at the common size.' for i in range(30)]
-        lines.insert(9, 'This deliberately long verse line keeps all of its words together across the printed book page.')
-        lines.insert(21, 'Every word in this longer quoted verse must also remain together on one printed baseline.')
+        lines.insert(9, 'This longer verse line still fits within the printed page.')
+        lines.insert(21, 'Every word in this longer verse stays on one baseline.')
         source = ':::poem\n' + '\n\n'.join('\n'.join(lines[i:i + 4]) for i in range(0, len(lines), 4)) + '\n:::'
         doc, _ = self.render(source)
         self.addCleanup(doc.close)
