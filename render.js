@@ -46,6 +46,24 @@ function preparePoemLayout() {
   }
   const base = path.resolve(process.env.BOOK_BUILD_DIR || __dirname);
   const assets = path.resolve(process.env.BOOK_ASSET_DIR || __dirname);
+  let printInput = path.join(base, 'interior.html');
+  const html = fs.readFileSync(printInput, 'utf8');
+  if (html.includes('<div class="poem">')) {
+    const fontPath = path.join(assets, 'fonts', 'Imbue.ttf');
+    if (!fs.existsSync(fontPath)) {
+      throw new Error('The poem typeface is missing. Run python prepare_poem_fonts.py before printing.');
+    }
+    // Fonts belong in the document before navigation. addStyleTag may wait
+    // indefinitely for a load event when document JavaScript is disabled.
+    // This is a generated build file, never a saved manuscript or source file.
+    const encoded = fs.readFileSync(fontPath).toString('base64');
+    const face = '<style>@font-face { font-family: "Poem Serif"; ' +
+      'src: url("data:font/ttf;base64,' + encoded + '") format("truetype"); ' +
+      'font-weight: 100 900; font-style: normal; }</style>';
+    if (!html.includes('</head>')) throw new Error('The typeset document has no HTML head.');
+    printInput = path.join(base, 'interior.print.html');
+    fs.writeFileSync(printInput, html.replace('</head>', face + '</head>'), 'utf8');
+  }
   const browser = await chromium.launch({
     ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
@@ -72,21 +90,9 @@ function preparePoemLayout() {
       }
       return route.abort();
     });
-    await page.goto(pathToFileURL(path.join(base, 'interior.html')).href, {
+    await page.goto(pathToFileURL(printInput).href, {
       waitUntil: 'networkidle', timeout: 180000,
     });
-    if (await page.locator('.poem').count()) {
-      const fontPath = path.join(assets, 'fonts', 'Imbue.ttf');
-      if (!fs.existsSync(fontPath)) {
-        throw new Error('The poem typeface is missing. Run python prepare_poem_fonts.py before printing.');
-      }
-      // Trusted renderer CSS, with no network request or manuscript script.
-      const encoded = fs.readFileSync(fontPath).toString('base64');
-      await page.addStyleTag({ content: '@font-face { font-family: "Poem Serif"; ' +
-        'src: url("data:font/ttf;base64,' + encoded + '") format("truetype"); ' +
-        'font-weight: 100 900; font-style: normal; }' });
-      await page.evaluate(() => document.fonts.load('11pt "Poem Serif"'));
-    }
     await page.evaluate(() => document.fonts.ready);
     const failedFonts = await page.evaluate(() =>
       Array.from(document.fonts).some((font) => font.status === 'error'));
