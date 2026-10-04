@@ -156,14 +156,13 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
     infer_poem = bool(re.search(r'\bwhy\b.*\bbelieve\b.*\ballah\b', chapter_title, re.I))
     sections = manuscript_sections(md, infer_poem=infer_poem)
     body = []
-    if not any(kind == 'poem' for kind, _ in sections):
+    has_poem = any(kind == 'poem' for kind, _ in sections)
+    if not has_poem:
         body = prose_body_html(strip_fm(md), dropcap=dropcap)
     else:
         for section_index, (kind, text) in enumerate(sections):
             if kind == 'poem':
-                follows_prose = (section_index > 0 and sections[section_index - 1][0] == 'prose'
-                                 and bool(sections[section_index - 1][1].strip()))
-                body.extend(poem_body_html(text, inline, continue_from_prose=follows_prose))
+                body.extend(poem_body_html(text, inline))
             else:
                 body.extend(prose_body_html(text, dropcap=dropcap and section_index == 0,
                                             skip_subtitle=section_index == 0))
@@ -175,10 +174,11 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
     # anchors do not survive PDF text extraction, and title-based detection can
     # fail when Chromium wraps a hyphenated title (for example, GREAT-\nGRANDFATHER).
     marker = '<span class="page-marker">[[PG:%s]]</span>' % anchor_id if anchor_id else ''
+    chapter_class = 'chapter chapter--mixed-poem' if has_poem else 'chapter'
     if eyebrow:
-        head = '<section class="chapter"%s><div class="eyebrow">%s</div><h1 class="chap">%s%s</h1>' % (section_id, eyebrow, marker, escape(display))
+        head = '<section class="%s"%s><div class="eyebrow">%s</div><h1 class="chap">%s%s</h1>' % (chapter_class, section_id, eyebrow, marker, escape(display))
     else:
-        head = '<section class="chapter"%s><h1 class="chap nonum">%s%s</h1>' % (section_id, marker, escape(display))
+        head = '<section class="%s"%s><h1 class="chap nonum">%s%s</h1>' % (chapter_class, section_id, marker, escape(display))
     return head + '\n'.join(body) + '</section>'
 
 ALL_MANIFEST = json.loads(Path(D + 'manifest.json').read_text(encoding='utf-8'))

@@ -64,17 +64,21 @@ class PoemPdfTests(unittest.TestCase):
     def test_centred_stanzas_stay_intact_in_chapter_export(self):
         stanzas = ['\n'.join(f'Verse {i:02d}-{j}: a line kept within its stanza.' for j in range(4))
                    for i in range(18)]
+        stanzas[0] = ('Suppose I told you no one wrote the book you are holding now.\n'
+                      'You would look down at the words, then back at me, and ask me how.\n'
+                      'I say it just appeared one day. You tell me to try again.\n'
+                      'I say there was a printer. You say that is not what I asked.')
         source = ('An introduction stays ordinary prose before the following poem is printed.\n\n'
                   ':::poem\n' + '\n\n'.join(stanzas) + '\n\nInspired by a test fixture.\n:::')
         doc, html = self.render(source)
         self.addCleanup(doc.close)
         self.assertGreater(len(doc), 2)
         self.assertEqual(html.count('class="poem-ornament'), 2)
-        self.assertIn('class="poem poem--lead"', html)
-        self.assertIn('class="poem poem--wide"', html)
+        self.assertIn('class="chapter chapter--mixed-poem"', html)
+        self.assertEqual(html.count('class="poem"'), 1)
         intro_page = next(i for i, page in enumerate(doc)
                           if 'introduction stays ordinary prose' in normal(page.get_text()))
-        self.assertIn('Verse 00-0', doc[intro_page].get_text())
+        self.assertIn('Suppose I told you', doc[intro_page].get_text())
         pages = [normal(page.get_text()) for page in doc]
         for stanza in stanzas:
             self.assertEqual(sum(normal(stanza) in page for page in pages), 1)
@@ -114,8 +118,8 @@ class PoemPdfTests(unittest.TestCase):
         doc, html = self.render(source, book=True)
         self.addCleanup(doc.close)
         self.assertIn('<p><em>An italic closing note.</em></p>', html)
-        self.assertEqual(html.count('class="poem poem--lead"'), 1)
-        self.assertEqual(html.count('class="poem poem--wide"'), 1)
+        self.assertIn('class="chapter chapter--mixed-poem"', html)
+        self.assertEqual(html.count('class="poem"'), 1)
         text = normal(' '.join(page.get_text() for page in doc))
         self.assertIn('prose remains normal Georgia text.', text)
         self.assertTrue(any(link.get('uri', '').endswith('/references#ref-9')

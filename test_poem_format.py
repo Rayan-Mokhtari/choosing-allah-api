@@ -58,13 +58,13 @@ class PoemFormatTests(unittest.TestCase):
         self.assertEqual(manuscript_sections('A poem is mentioned.\n\nShort\nLines', True)[0][0], 'prose')
         self.assertEqual(manuscript_sections(('Line one\nLine two\n\n' * 10), True)[0][0], 'prose')
 
-    def test_mixed_poem_can_start_on_prose_page_then_switch_wide(self):
+    def test_mixed_poem_uses_one_wide_block(self):
         rendered = ''.join(poem_body_html(
             'First line\nSecond line\n\nLater stanza\nFinal line',
             lambda value: value, continue_from_prose=True))
-        self.assertIn('class="poem poem--lead"', rendered)
-        self.assertIn('class="poem poem--wide"', rendered)
-        self.assertLess(rendered.index('First line'), rendered.index('Later stanza'))
+        self.assertIn('class="poem"', rendered)
+        self.assertNotIn('poem--lead', rendered)
+        self.assertNotIn('poem--wide', rendered)
         self.assertEqual(rendered.count('class="poem-ornament'), 2)
 
     def test_credit_stays_with_last_stanza_and_closing_ornament(self):

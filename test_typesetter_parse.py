@@ -41,8 +41,8 @@ class TypesetterParseTests(unittest.TestCase):
                   ':::poem\nA verse with [^9].\nAnother with <sup>10</sup>.\n:::\n\nA prose ending.')
         html = load_parser()(source, '2. A question', 'a-2')
         self.assertEqual(html.count('class="dropcap"'), 1)
-        self.assertEqual(html.count('class="poem poem--lead"'), 1)
-        self.assertEqual(html.count('class="poem poem--wide"'), 0)
+        self.assertIn('class="chapter chapter--mixed-poem"', html)
+        self.assertEqual(html.count('class="poem"'), 1)
         self.assertIn('references#ref-9', html)
         self.assertIn('references#ref-10', html)
         self.assertIn('<p>A prose ending.</p>', html)
@@ -53,8 +53,8 @@ class TypesetterParseTests(unittest.TestCase):
         source = 'I have chosen to answer with a poem.\n\n' + '\n\n'.join('One\nTwo\nThree\nFour' for _ in range(5))
         parse = load_parser()
         belief_html = parse(source, '2. Why should you believe in Allah?')
-        self.assertIn('class="poem poem--lead"', belief_html)
-        self.assertIn('class="poem poem--wide"', belief_html)
+        self.assertIn('class="chapter chapter--mixed-poem"', belief_html)
+        self.assertIn('class="poem"', belief_html)
         self.assertNotIn('class="poem"', parse(source, '3. Another chapter'))
 
 
