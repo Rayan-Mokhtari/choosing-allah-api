@@ -170,22 +170,24 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
     if not has_poem:
         body = prose_body_html(strip_fm(md), dropcap=dropcap)
     else:
-        from companion_qr import COMPANION_MARKDOWN, companion_closing_html
+        from companion_qr import COMPANION_MARKDOWN, companion_page_html
         consumed = set()
         for section_index, (kind, text) in enumerate(sections):
             if section_index in consumed:
                 continue
             if kind == 'poem':
-                closing = None
-                # Only absorb a final, simple invitation plus the stable QR.
-                # Longer prose endings retain the normal prose typesetter.
+                companion = None
+                # Give a final, simple viewing invitation a deliberate page.
+                # The poem credit and ornament retain their original layout.
                 if section_index + 1 == len(sections) - 1 and sections[-1][0] == 'prose':
                     tail = [line.strip() for line in sections[-1][1].split('\n') if line.strip()]
                     if len(tail) == 2 and tail[-1] == COMPANION_MARKDOWN and not re.match(r'^[#>+*-]', tail[0]):
                         invitation = ''.join(prose_body_html(tail[0], dropcap=False, skip_subtitle=False))
-                        closing = lambda credit, ornament: companion_closing_html(invitation, credit, ornament)
+                        companion = companion_page_html(invitation)
                         consumed.add(section_index + 1)
-                body.extend(poem_body_html(text, inline, closing_companion=closing))
+                body.extend(poem_body_html(text, inline))
+                if companion:
+                    body.append(companion)
             else:
                 body.extend(prose_body_html(text, dropcap=dropcap and section_index == 0,
                                             skip_subtitle=section_index == 0))

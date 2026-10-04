@@ -18,12 +18,12 @@ def companion_qr_html():
             'choosingallah.com/explore</a></div>') % (COMPANION_URL, encoded, COMPANION_URL)
 
 
-def companion_closing_html(invitation, credit, ornament):
-    """Compact book closing; the invitation has already passed the prose parser."""
+def companion_page_html(invitation):
+    """A centered viewing invitation, separate from the poem credit."""
     encoded = base64.b64encode(Path(__file__).with_name('chapter2-qr.svg').read_bytes()).decode('ascii')
-    return ('<div class="companion-close">'
-            '<div class="companion-close-copy">%s%s%s'
-            '<a class="companion-close-url" href="%s">choosingallah.com/explore</a></div>'
-            '<a class="companion-close-code" href="%s" aria-label="Explore nature and space">'
-            '<img src="data:image/svg+xml;base64,%s" alt="Explore nature and space QR code">'
-            '</a></div>') % (credit, ornament, invitation, COMPANION_URL, COMPANION_URL, encoded)
+    return ('<div class="companion-page">'
+            '<h2 class="companion-page-title">Nature and space</h2>%s'
+            '<a class="companion-page-code" href="%s" aria-label="Explore nature and space">'
+            '<img src="data:image/svg+xml;base64,%s" alt="Explore nature and space QR code"></a>'
+            '<a class="companion-page-url" href="%s">choosingallah.com/explore</a>'
+            '</div>') % (invitation, COMPANION_URL, encoded, COMPANION_URL)
