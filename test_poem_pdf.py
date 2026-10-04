@@ -78,7 +78,9 @@ class PoemPdfTests(unittest.TestCase):
         self.assertEqual(html.count('class="poem"'), 1)
         intro_page = next(i for i, page in enumerate(doc)
                           if 'introduction stays ordinary prose' in normal(page.get_text()))
-        self.assertIn('Suppose I told you', doc[intro_page].get_text())
+        intro_text = normal(doc[intro_page].get_text())
+        self.assertIn('Suppose I told you no one wrote the book you are holding now.', intro_text)
+        self.assertIn('You would look down at the words, then back at me, and ask me how.', intro_text)
         pages = [normal(page.get_text()) for page in doc]
         for stanza in stanzas:
             self.assertEqual(sum(normal(stanza) in page for page in pages), 1)
@@ -95,7 +97,7 @@ class PoemPdfTests(unittest.TestCase):
                     centres.append(abs((x0 + x1) / 2 - expected_centre))
                     self.assertGreaterEqual(y0, 55)
                     self.assertLessEqual(y1, 554)
-        self.assertEqual(len(centres), 72)
+        self.assertEqual(len(centres), 68)
         self.assertLess(max(centres), 1.5)
         self.assertIn('Inspired by a test fixture.', doc[-1].get_text())
         self.assertGreater(len(doc[0].get_drawings()), 0)
