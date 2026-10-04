@@ -73,7 +73,7 @@ class PoemPdfTests(unittest.TestCase):
         self.assertIn('class="poem poem--lead"', html)
         self.assertIn('class="poem poem--wide"', html)
         intro_page = next(i for i, page in enumerate(doc)
-                          if 'An introduction stays ordinary prose' in page.get_text())
+                          if 'introduction stays ordinary prose' in normal(page.get_text()))
         self.assertIn('Verse 00-0', doc[intro_page].get_text())
         pages = [normal(page.get_text()) for page in doc]
         for stanza in stanzas:
