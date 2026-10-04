@@ -18,6 +18,21 @@ def load_parser():
 
 
 class TypesetterParseTests(unittest.TestCase):
+    def test_invitation_after_credit_is_prose_and_qr_is_clickable(self):
+        from companion_qr import COMPANION_MARKDOWN
+        source = ('I have chosen to answer with a poem.\n\n'
+                  + '\n\n'.join('One\nTwo\nThree\nFour' for _ in range(5))
+                  + '\n\nInspired by another poem.\n\n'
+                  + 'A closing invitation ' * 20 + '\n\n' + COMPANION_MARKDOWN)
+        sections = manuscript_sections(source, infer_poem=True)
+        self.assertEqual([kind for kind, _ in sections], ['prose', 'poem', 'prose'])
+        self.assertNotIn('closing invitation', sections[1][1])
+        html = load_parser()(source, '2. Why should you believe in Allah?')
+        self.assertIn('class="companion-note"', html)
+        self.assertIn('href="https://choosingallah.com/explore"', html)
+        self.assertIn('data:image/svg+xml;base64,', html)
+        self.assertNotIn('[![', html)
+
     def test_poem_is_explicit_safe_and_keeps_inline_references(self):
         html = load_parser()('---\nformat: poem\n---\nFirst\nSecond *word*\n\nA < B & C [^9]', '2. A question', 'a-2')
         self.assertIn('<span class="poem-line">Second <em>word</em></span>', html)

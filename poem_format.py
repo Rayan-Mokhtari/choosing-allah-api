@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 11
+POEM_FORMAT_VERSION = 12
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -113,13 +113,23 @@ def _implicit_sections(body):
         before = body[:match.start()]
         if not re.search(r'\bpoem\b|\bpoetry\b', before, re.I):
             continue
-        tail = [block[0].strip().split('\n') for block in blocks[index:]]
+        # A standalone attribution ends the poem. Any invitation or QR after
+        # it must retain prose wrapping, even when it is a very short outro.
+        end = len(body)
+        for block in blocks[index:]:
+            if '\n' not in block[0].strip() and _CREDIT.match(block[0].strip()):
+                end = block.end()
+                break
+        tail = [block[0].strip().split('\n') for block in blocks[index:] if block.start() < end]
         verse_lines = [line for stanza in tail for line in stanza if line.strip()]
         multiline = sum(len(stanza) > 1 for stanza in tail)
         if (multiline >= 4 and len(verse_lines) >= 12
                 and sum(len(line) <= 180 for line in verse_lines) / len(verse_lines) >= .95
                 and not any(re.match(r'^\s*(?:#{1,6}\s|[-+]\s|```|~~~)', line) for line in verse_lines)):
-            return [('prose', before), ('poem', body[match.start():])]
+            sections = [('prose', before), ('poem', body[match.start():end])]
+            if body[end:].strip():
+                sections.append(('prose', body[end:]))
+            return sections
     return [('prose', body)]
 
 

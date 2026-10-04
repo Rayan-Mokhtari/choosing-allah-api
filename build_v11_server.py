@@ -95,6 +95,7 @@ FN_COUNTER = [0]
 
 def prose_body_html(md, dropcap=True, skip_subtitle=True):
     """The existing prose typesetter, also used around explicit poem blocks."""
+    from companion_qr import COMPANION_MARKDOWN, companion_qr_html
     lines = [l.strip() for l in md.split('\n')]
     body = []
     idx = 0
@@ -107,6 +108,15 @@ def prose_body_html(md, dropcap=True, skip_subtitle=True):
         if not l: continue
         if l.startswith('<page') or l.startswith('<empty-block'): continue
         raw = l
+        if raw == COMPANION_MARKDOWN:
+            if in_ul: body.append('</ul>'); in_ul = False
+            qr = companion_qr_html()
+            if body and body[-1].startswith('<p>'):
+                invitation = body.pop()
+                body.append('<div class="companion-note" style="break-inside:avoid;page-break-inside:avoid;margin-top:.2in">' + invitation + qr + '</div>')
+            else:
+                body.append(qr)
+            continue
         l = norm_quotes(absorb(l))
         if re.match(r'^-{3,}$', raw):
             body.append('<p class="break">*</p>'); continue
