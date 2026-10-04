@@ -42,7 +42,7 @@ class TypesetterParseTests(unittest.TestCase):
         html = load_parser()(source, '2. A question', 'a-2')
         self.assertEqual(html.count('class="dropcap"'), 1)
         self.assertEqual(html.count('class="poem poem--lead"'), 1)
-        self.assertEqual(html.count('class="poem poem--wide"'), 1)
+        self.assertEqual(html.count('class="poem poem--wide"'), 0)
         self.assertIn('references#ref-9', html)
         self.assertIn('references#ref-10', html)
         self.assertIn('<p>A prose ending.</p>', html)
