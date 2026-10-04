@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Confirm the public print service advertises dedicated Georgia poem format ten
+      - name: Confirm the public print service advertises dedicated Georgia poem format eleven
         run: |
           python3 -u - <<'PY'
           import json, time, urllib.request
@@ -25,18 +25,18 @@ jobs:
                       health = json.load(response)
                   result = {'checked_at': datetime.now(timezone.utc).isoformat(),
                             'endpoint': url, 'response': health,
-                            'expected_poem_format_version': 10}
+                            'expected_poem_format_version': 11}
                   Path('deployment-health.json').write_text(json.dumps(result, indent=2))
                   print(json.dumps(result), flush=True)
-                  if health.get('status') == 'ok' and health.get('poem_format_version') == 10:
-                      print('Dedicated Georgia 11pt mixed-chapter wide-page renderer is live.', flush=True)
+                  if health.get('status') == 'ok' and health.get('poem_format_version') == 11:
+                      print('Dedicated Georgia 11pt mixed-chapter bullet-indent renderer is live.', flush=True)
                       break
               except Exception as error:
                   print(type(error).__name__ + ': ' + str(error), flush=True)
               if attempt < 9:
                   time.sleep(10)
           else:
-              raise SystemExit('The mixed-chapter wide-page renderer was not confirmed live within this check.')
+              raise SystemExit('The mixed-chapter bullet-indent renderer was not confirmed live within this check.')
           PY
       - name: Retain the deployment verification result
         if: always()
