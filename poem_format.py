@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 10
+POEM_FORMAT_VERSION = 11
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -19,6 +19,17 @@ POEM_CSS = r'''
 .chapter--mixed-poem > :not(.poem) {
   width: 4.35in; max-width: 100%; margin-left: auto; margin-right: auto;
   box-sizing: border-box;
+}
+/* Lists should sit inside the prose measure, not hang their bullets in the
+   gutter. Keep the indent modest: marker near the prose edge, text just in. */
+.chapter--mixed-poem > ul {
+  width: 4.25in;
+  margin: 0 auto .13in;
+  padding-left: .18in;
+  box-sizing: border-box;
+}
+.chapter--mixed-poem > ul > li {
+  padding-left: .02in;
 }
 .poem {
   /* Match the book: Georgia at a fixed 11pt on every authored verse line. */
