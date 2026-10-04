@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 8
+POEM_FORMAT_VERSION = 9
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -16,15 +16,19 @@ _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
 POEM_CSS = r'''
 @page poem-page { size: 5.5in 8.5in; margin: 0.8in 0.05in 0.85in 0.20in; }
 .poem {
-  page: poem-page;
   /* Match the book: Georgia at a fixed 11pt on every authored verse line. */
   font-family: Georgia, "Liberation Serif", serif; font-size: 11pt; font-weight: 400;
   font-kerning: normal; letter-spacing: normal; word-spacing: normal;
-  width: auto; max-width: none; margin: .26in auto .22in;
+  width: 4.35in; max-width: 100%; margin: .26in auto .22in;
   line-height: 1.34;
   text-align: center; text-indent: 0;
   hyphens: none; -webkit-hyphens: none;
 }
+.poem--wide {
+  page: poem-page;
+  width: auto; max-width: none;
+}
+.poem--lead { page: auto; }
 .poem .poem-stanza {
   display: block; margin: 0 0 .18in; padding: 0; text-indent: 0;
   text-align: center; white-space: normal;
@@ -155,7 +159,7 @@ def _ornament(closing=False):
             '</svg></div>') % modifier
 
 
-def poem_body_html(body, inline):
+def poem_body_html(body, inline, continue_from_prose=False):
     """One element per authored line; one unbreakable group per stanza."""
     body = body.replace('\r\n', '\n').strip('\n')
     stanzas = [stanza for stanza in re.split(r'\n[\t ]*\n+', body) if stanza.strip()]
@@ -181,6 +185,21 @@ def poem_body_html(body, inline):
                         for line in stanza.split('\n'))
         rendered.append('<p class="poem-stanza">%s</p>' % lines)
     credit_html = '<p class="poem-credit">%s</p>' % format_line(credit) if credit else ''
+    if continue_from_prose:
+        # The first stanza stays in the normal prose page area. The remaining
+        # stanzas switch to the named wide page and therefore start next page.
+        if len(rendered) == 1:
+            lead = ('<div class="poem poem--lead"><div class="poem-bookend">'
+                    + _ornament() + rendered[0] + credit_html + _ornament(True)
+                    + '</div></div>')
+            return [lead]
+        lead = ('<div class="poem poem--lead"><div class="poem-bookend">'
+                + _ornament() + rendered[0] + '</div></div>')
+        continuation = list(rendered[1:-1])
+        continuation.append('<div class="poem-bookend">' + rendered[-1]
+                            + credit_html + _ornament(True) + '</div>')
+        return [lead, '<div class="poem poem--wide">'
+                + '\n'.join(continuation) + '</div>']
     if len(rendered) == 1:
         groups = ['<div class="poem-bookend">' + _ornament() + rendered[0]
                   + credit_html + _ornament(True) + '</div>']
@@ -189,4 +208,4 @@ def poem_body_html(body, inline):
         groups.extend(rendered[1:-1])
         groups.append('<div class="poem-bookend">' + rendered[-1] + credit_html
                       + _ornament(True) + '</div>')
-    return ['<div class="poem">' + '\n'.join(groups) + '</div>']
+    return ['<div class="poem poem--wide">' + '\n'.join(groups) + '</div>']

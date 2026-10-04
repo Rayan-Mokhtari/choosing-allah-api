@@ -161,7 +161,9 @@ def parse(md, chapter_title, anchor_id=None, footnotes=True, dropcap=True):
     else:
         for section_index, (kind, text) in enumerate(sections):
             if kind == 'poem':
-                body.extend(poem_body_html(text, inline))
+                follows_prose = (section_index > 0 and sections[section_index - 1][0] == 'prose'
+                                 and bool(sections[section_index - 1][1].strip()))
+                body.extend(poem_body_html(text, inline, continue_from_prose=follows_prose))
             else:
                 body.extend(prose_body_html(text, dropcap=dropcap and section_index == 0,
                                             skip_subtitle=section_index == 0))
