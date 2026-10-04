@@ -16,3 +16,14 @@ def companion_qr_html():
             'style="display:block;width:1.05in;height:1.05in;margin:0 auto .07in"></a>'
             '<a href="%s" style="font-size:8.5pt;color:#333;text-decoration:none">'
             'choosingallah.com/explore</a></div>') % (COMPANION_URL, encoded, COMPANION_URL)
+
+
+def companion_closing_html(invitation, credit, ornament):
+    """Compact book closing; the invitation has already passed the prose parser."""
+    encoded = base64.b64encode(Path(__file__).with_name('chapter2-qr.svg').read_bytes()).decode('ascii')
+    return ('<div class="companion-close">'
+            '<div class="companion-close-copy">%s%s%s'
+            '<a class="companion-close-url" href="%s">choosingallah.com/explore</a></div>'
+            '<a class="companion-close-code" href="%s" aria-label="Explore nature and space">'
+            '<img src="data:image/svg+xml;base64,%s" alt="Explore nature and space QR code">'
+            '</a></div>') % (credit, ornament, invitation, COMPANION_URL, COMPANION_URL, encoded)

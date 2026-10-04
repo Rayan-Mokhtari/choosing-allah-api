@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 12
+POEM_FORMAT_VERSION = 13
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -82,6 +82,28 @@ POEM_CSS = r'''
 .poem .poem-stanza--long, .poem .poem-bookend--long {
   break-inside: auto; page-break-inside: auto;
 }
+.poem .companion-close {
+  display: flex; align-items: center; gap: .16in;
+  width: 4.35in; max-width: 100%; margin: .10in auto 0;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.poem .companion-close-copy { flex: 1; min-width: 0; text-align: center; }
+.poem .companion-close-copy .poem-credit {
+  font-size: 8pt; line-height: 1.3; margin: 0;
+}
+.poem .companion-close-copy .poem-ornament--close {
+  width: .75in; height: .12in; margin: .035in auto .035in;
+}
+.poem .companion-close-copy > p:not(.poem-credit) {
+  font-size: 10pt; line-height: 1.3; margin: 0 0 .035in;
+  text-indent: 0; text-align: center; hyphens: none;
+}
+.poem .companion-close-url {
+  display: block; font-size: 8pt; line-height: 1.3;
+  color: #333; text-decoration: none;
+}
+.poem .companion-close-code { display: block; flex: 0 0 .95in; }
+.poem .companion-close-code img { display: block; width: .95in; height: .95in; }
 '''
 
 
@@ -180,7 +202,7 @@ def _ornament(closing=False):
             '</svg></div>') % modifier
 
 
-def poem_body_html(body, inline, continue_from_prose=False):
+def poem_body_html(body, inline, continue_from_prose=False, closing_companion=None):
     """One element per authored line; one unbreakable group per stanza."""
     body = body.replace('\r\n', '\n').strip('\n')
     stanzas = [stanza for stanza in re.split(r'\n[\t ]*\n+', body) if stanza.strip()]
@@ -206,12 +228,14 @@ def poem_body_html(body, inline, continue_from_prose=False):
                         for line in stanza.split('\n'))
         rendered.append('<p class="poem-stanza">%s</p>' % lines)
     credit_html = '<p class="poem-credit">%s</p>' % format_line(credit) if credit else ''
+    closing_html = (closing_companion(credit_html, _ornament(True))
+                    if closing_companion else credit_html + _ornament(True))
     if len(rendered) == 1:
         groups = ['<div class="poem-bookend">' + _ornament() + rendered[0]
-                  + credit_html + _ornament(True) + '</div>']
+                  + closing_html + '</div>']
     else:
         groups = ['<div class="poem-bookend">' + _ornament() + rendered[0] + '</div>']
         groups.extend(rendered[1:-1])
-        groups.append('<div class="poem-bookend">' + rendered[-1] + credit_html
-                      + _ornament(True) + '</div>')
+        groups.append('<div class="poem-bookend">' + rendered[-1]
+                      + closing_html + '</div>')
     return ['<div class="poem">' + '\n'.join(groups) + '</div>']

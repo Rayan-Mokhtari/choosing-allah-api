@@ -28,10 +28,29 @@ class TypesetterParseTests(unittest.TestCase):
         self.assertEqual([kind for kind, _ in sections], ['prose', 'poem', 'prose'])
         self.assertNotIn('closing invitation', sections[1][1])
         html = load_parser()(source, '2. Why should you believe in Allah?')
-        self.assertIn('class="companion-note"', html)
+        self.assertIn('class="companion-close"', html)
         self.assertIn('href="https://choosingallah.com/explore"', html)
         self.assertIn('data:image/svg+xml;base64,', html)
         self.assertNotIn('[![', html)
+
+    def test_companion_closes_with_last_stanza_and_credit_once(self):
+        from companion_qr import COMPANION_MARKDOWN
+        source = (':::poem\nFirst line\nSecond line\n\nFinal line\nLast line\n\n'
+                  'Inspired by a poem.\n:::\n\nScan the code to keep exploring.\n\n' + COMPANION_MARKDOWN)
+        html = load_parser()(source, '2. Why should you believe in Allah?')
+        last_group = html[html.rfind('<div class="poem-bookend">'):]
+        self.assertIn('Final line', last_group)
+        self.assertIn('companion-close-code', last_group)
+        self.assertEqual(html.count('Inspired by a poem.'), 1)
+        self.assertEqual(html.count('Scan the code to keep exploring.'), 1)
+        self.assertEqual(html.count('class="poem-ornament'), 2)
+
+    def test_long_prose_outro_stays_outside_poem(self):
+        from companion_qr import COMPANION_MARKDOWN
+        source = ':::poem\nOne\nTwo\n:::\n\nFirst paragraph.\n\nSecond paragraph.\n\n' + COMPANION_MARKDOWN
+        html = load_parser()(source, '2. Why should you believe in Allah?')
+        self.assertNotIn('companion-close-code', html)
+        self.assertIn('class="companion-note"', html)
 
     def test_poem_is_explicit_safe_and_keeps_inline_references(self):
         html = load_parser()('---\nformat: poem\n---\nFirst\nSecond *word*\n\nA < B & C [^9]', '2. A question', 'a-2')
