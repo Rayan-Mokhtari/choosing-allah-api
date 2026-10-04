@@ -41,7 +41,7 @@ class TypesetterParseTests(unittest.TestCase):
         last_group = html[html.rfind('<div class="poem-bookend">'):]
         self.assertIn('Final line', last_group)
         self.assertIn('companion-page-code', last_group)
-        self.assertIn('Nature and space', last_group)
+        self.assertIn('Look again', last_group)
         self.assertEqual(html.count('Inspired by a poem.'), 1)
         self.assertEqual(html.count('Scan the code to keep exploring.'), 1)
         self.assertEqual(html.count('class="poem-ornament'), 2)
