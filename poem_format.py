@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 16
+POEM_FORMAT_VERSION = 17
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -131,12 +131,25 @@ def _implicit_sections(body):
         before = body[:match.start()]
         if not re.search(r'\bpoem\b|\bpoetry\b', before, re.I):
             continue
-        # A standalone attribution ends the poem. Any invitation or QR after
-        # it must retain prose wrapping, even when it is a very short outro.
+        # A credit is optional. A trailing image/link also ends inferred verse;
+        # otherwise removing the credit turns the invitation and QR Markdown
+        # into unbreakable verse lines and can shrink the entire printed page.
         end = len(body)
-        for block in blocks[index:]:
-            if '\n' not in block[0].strip() and _CREDIT.match(block[0].strip()):
+        for block_index in range(index, len(blocks)):
+            block = blocks[block_index]
+            block_lines = block[0].strip().split('\n')
+            if len(block_lines) == 1 and _CREDIT.match(block_lines[0]):
                 end = block.end()
+                break
+            if any(re.match(r'^\s*(?:!\[|\[!\[)', line) for line in block_lines):
+                end = block.start()
+                # Standalone paragraphs immediately before the image belong
+                # to its prose invitation. Stop at the final multiline stanza.
+                # Explicit :::poem fences remain available for ambiguous verse.
+                for preceding in reversed(blocks[index:block_index]):
+                    if '\n' in preceding[0].strip():
+                        break
+                    end = preceding.start()
                 break
         tail = [block[0].strip().split('\n') for block in blocks[index:] if block.start() < end]
         verse_lines = [line for stanza in tail for line in stanza if line.strip()]
