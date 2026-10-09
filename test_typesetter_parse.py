@@ -41,7 +41,7 @@ class TypesetterParseTests(unittest.TestCase):
         last_group = html[html.rfind('<div class="poem-bookend">'):]
         self.assertIn('Final line', last_group)
         self.assertIn('companion-page-code', last_group)
-        self.assertIn('Look again', last_group)
+        self.assertNotIn('Look again', last_group)
         self.assertEqual(html.count('Inspired by a poem.'), 1)
         self.assertEqual(html.count('Scan the code to keep exploring.'), 1)
         self.assertEqual(html.count('class="poem-ornament'), 2)
@@ -91,6 +91,55 @@ class TypesetterParseTests(unittest.TestCase):
         self.assertIn('class="chapter chapter--mixed-poem"', belief_html)
         self.assertIn('class="poem"', belief_html)
         self.assertNotIn('class="poem"', parse(source, '3. Another chapter'))
+
+    def test_removing_credit_keeps_invitation_and_qr_outside_inferred_poem(self):
+        from companion_qr import COMPANION_MARKDOWN
+        source = ('I have chosen to answer with a poem.\n\n'
+                  + '\n\n'.join('One\nTwo\nThree\nFour' for _ in range(5))
+                  + '\n\nA closing invitation.\n\n' + COMPANION_MARKDOWN)
+        sections = manuscript_sections(source, infer_poem=True)
+        self.assertEqual([kind for kind, _ in sections], ['prose', 'poem', 'prose'])
+        self.assertNotIn('invitation', sections[1][1])
+        self.assertNotIn('[![', sections[1][1])
+        html = load_parser()(source, '2. Why should you believe in Allah?')
+        self.assertEqual(html.count('class="poem-line"'), 20)
+        self.assertEqual(html.count('class="companion-page"'), 1)
+        self.assertIn('data:image/svg+xml;base64,', html)
+        self.assertNotIn('[![', html)
+        self.assertNotIn('Look again', html)
+        self.assertNotIn('poem-credit', html)
+
+    def test_credit_free_qr_with_single_newline_after_invitation(self):
+        from companion_qr import COMPANION_MARKDOWN
+        source = ('A poem follows.\n\n'
+                  + '\n\n'.join('One\nTwo\nThree\nFour' for _ in range(4))
+                  + '\n\nRead more here.\n' + COMPANION_MARKDOWN)
+        html = load_parser()(source, '2. Why should you believe in Allah?')
+        self.assertEqual(html.count('class="poem-line"'), 16)
+        self.assertIn('class="companion-page"', html)
+        self.assertNotIn('[![', html)
+
+    def test_credit_free_multiple_prose_paragraphs_before_qr(self):
+        from companion_qr import COMPANION_MARKDOWN
+        source = ('A poem follows.\n\n'
+                  + '\n\n'.join('One\nTwo\nThree\nFour' for _ in range(4))
+                  + '\n\nFirst closing paragraph.\n\nSecond closing paragraph.\n\n' + COMPANION_MARKDOWN)
+        sections = manuscript_sections(source, infer_poem=True)
+        self.assertNotIn('closing paragraph', sections[1][1])
+        html = load_parser()(source, '2. Why should you believe in Allah?')
+        self.assertEqual(html.count('class="poem-line"'), 16)
+        self.assertIn('class="companion-note"', html)
+        self.assertNotIn('[![', html)
+
+    def test_credit_free_qr_directly_after_stanza(self):
+        from companion_qr import COMPANION_MARKDOWN
+        source = ('A poem follows.\n\n'
+                  + '\n\n'.join('One\nTwo\nThree\nFour' for _ in range(4))
+                  + '\n\n' + COMPANION_MARKDOWN)
+        html = load_parser()(source, '2. Why should you believe in Allah?')
+        self.assertEqual(html.count('class="poem-line"'), 16)
+        self.assertIn('class="companion-qr"', html)
+        self.assertNotIn('[![', html)
 
 
 if __name__ == '__main__':
