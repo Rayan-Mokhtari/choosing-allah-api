@@ -19,10 +19,10 @@ def companion_qr_html():
 
 
 def companion_page_html(invitation):
-    """A centered viewing invitation, separate from the poem credit."""
+    """An in-flow invitation below the poem; retain the legacy helper name."""
     encoded = base64.b64encode(Path(__file__).with_name('chapter2-qr.svg').read_bytes()).decode('ascii')
     return ('<div class="companion-page">'
-            '<h2 class="companion-page-title">Look again</h2>%s'
+            '%s'
             '<a class="companion-page-code" href="%s" aria-label="Keep exploring">'
             '<img src="data:image/svg+xml;base64,%s" alt="QR code: keep exploring"></a>'
             '<a class="companion-page-url" href="%s">choosingallah.com/explore</a>'
