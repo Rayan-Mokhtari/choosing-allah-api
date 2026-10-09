@@ -8,7 +8,7 @@ Chapter Two is also recognised for existing editor revisions without markers.
 import re
 from html import escape
 
-POEM_FORMAT_VERSION = 15
+POEM_FORMAT_VERSION = 16
 _FRONT = re.compile(r'^\ufeff?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)')
 _FENCE = re.compile(r'^[\t ]*:::poem[\t ]*$', re.I | re.M)
 _CREDIT = re.compile(r'^[*_]*inspired by\s+', re.I)
@@ -82,20 +82,19 @@ POEM_CSS = r'''
 .poem .poem-stanza--long, .poem .poem-bookend--long {
   break-inside: auto; page-break-inside: auto;
 }
+/* The invitation follows the poem in normal flow. Keep it and its QR
+   together, but use the remaining page space instead of forcing a new page. */
 .companion-page {
-  break-before: page; page-break-before: always;
-  min-height: 6.85in; display: flex; flex-direction: column;
-  justify-content: center; align-items: center; text-align: center;
-}
-.companion-page .companion-page-title {
-  font-size: 18pt; font-weight: normal; line-height: 1.3;
-  margin: 0 0 .14in; letter-spacing: 0;
+  break-before: auto; page-break-before: auto;
+  break-inside: avoid; page-break-inside: avoid;
+  min-height: 0; display: block; margin-top: .22in;
+  text-align: center;
 }
 .companion-page > p {
-  font-size: 11pt; line-height: 1.45; text-indent: 0;
-  text-align: center; margin: 0 0 .25in; hyphens: none;
+  font: inherit; text-indent: 0;
+  text-align: center; margin: 0 0 .18in; hyphens: none;
 }
-.companion-page-code { display: block; }
+.companion-page-code { display: block; width: 1.25in; margin: 0 auto; }
 .companion-page-code img { display: block; width: 1.25in; height: 1.25in; }
 .companion-page-url {
   display: block; margin-top: .12in; font-size: 9pt;
